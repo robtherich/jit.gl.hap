@@ -1,0 +1,4 @@
+LIBRARY jit.gl.hap.mxe
+
+EXPORTS
+	main
