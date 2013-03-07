@@ -17,24 +17,22 @@
 		D435281C16E6BD1000DC2BC0 /* QuickTime.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D435281B16E6BD1000DC2BC0 /* QuickTime.framework */; };
 		D435281E16E6BD2200DC2BC0 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D435281D16E6BD2200DC2BC0 /* Quartz.framework */; };
 		D435282016E6BD7F00DC2BC0 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D435281F16E6BD7F00DC2BC0 /* QTKit.framework */; };
-		D480C59016E6C2760023321E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D480C58F16E6C2760023321E /* Cocoa.framework */; };
 		D480C59216E6C2830023321E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D480C59116E6C2830023321E /* Cocoa.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		22301F4910D7BC6C00C1989F /* JitterAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JitterAPI.framework; path = "../../../c74support/jit-includes/JitterAPI.framework"; sourceTree = SOURCE_ROOT; };
+		22301F4910D7BC6C00C1989F /* JitterAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JitterAPI.framework; path = "../MaxSDK-6.1.0/c74support/jit-includes/JitterAPI.framework"; sourceTree = SOURCE_ROOT; };
 		2282B5AA10D90CE800D827D3 /* jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.c; sourceTree = "<group>"; };
 		2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = max.jit.gl.hap.c; sourceTree = "<group>"; };
 		2282B5C410D90D3900D827D3 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
-		22CF10220EE984600054F513 /* maxmspsdk.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = maxmspsdk.xcconfig; path = ../../maxmspsdk.xcconfig; sourceTree = SOURCE_ROOT; };
-		2FBBEAE508F335360078DB84 /* jit.gl.hap.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = jit.gl.hap.mxo; sourceTree = BUILT_PRODUCTS_DIR; };
+		22CF10220EE984600054F513 /* maxmspsdk.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = maxmspsdk.xcconfig; sourceTree = SOURCE_ROOT; };
+		2FBBEAE508F335360078DB84 /* jit.gl.hap.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = jit.gl.hap.mxo; path = .bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D435280816E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Hap_QuickTime_Playback_Prefix.pch; sourceTree = "<group>"; };
 		D435280B16E6B99B00DC2BC0 /* HapQuickTimePlayback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HapQuickTimePlayback.h; sourceTree = "<group>"; };
 		D435280C16E6B99B00DC2BC0 /* HapQuickTimePlayback.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HapQuickTimePlayback.m; sourceTree = "<group>"; };
 		D435281B16E6BD1000DC2BC0 /* QuickTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickTime.framework; path = /System/Library/Frameworks/QuickTime.framework; sourceTree = "<absolute>"; };
 		D435281D16E6BD2200DC2BC0 /* Quartz.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Quartz.framework; path = /System/Library/Frameworks/Quartz.framework; sourceTree = "<absolute>"; };
 		D435281F16E6BD7F00DC2BC0 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = /System/Library/Frameworks/QTKit.framework; sourceTree = "<absolute>"; };
-		D480C58F16E6C2760023321E /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = ../../../../../../../../System/Library/Frameworks/Cocoa.framework; sourceTree = "<group>"; };
 		D480C59116E6C2830023321E /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = ../../../../../../../../System/Library/Frameworks/Cocoa.framework; sourceTree = "<group>"; };
 		D480C59616E6D9810023321E /* Hap_c_interface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Hap_c_interface.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -44,7 +42,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D480C59016E6C2760023321E /* Cocoa.framework in Frameworks */,
 				22301F4A10D7BC6C00C1989F /* JitterAPI.framework in Frameworks */,
 				2282B5C510D90D3900D827D3 /* OpenGL.framework in Frameworks */,
 				D435281C16E6BD1000DC2BC0 /* QuickTime.framework in Frameworks */,
@@ -60,7 +57,6 @@
 		089C166AFE841209C02AAC07 /* iterator */ = {
 			isa = PBXGroup;
 			children = (
-				D480C58F16E6C2760023321E /* Cocoa.framework */,
 				22CF10220EE984600054F513 /* maxmspsdk.xcconfig */,
 				08FB77ADFE841716C02AAC07 /* Source */,
 				D435280516E6B99B00DC2BC0 /* hap */,
