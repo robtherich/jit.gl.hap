@@ -3,7 +3,7 @@
 *.lib
 *.framework
 *.perspectivev3
-
+sdk-build/
 build/
 *.pbxuser
 *.mode1v3
