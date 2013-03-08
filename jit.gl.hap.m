@@ -8,13 +8,13 @@
 
 typedef struct _jit_gl_hap 
 {
-	t_object			ob;
-	void				*ob3d;
-	t_symbol			*file;
-		
+	t_object				ob;
+	void					*ob3d;
+	
+	t_symbol				*file;
 	void					*texoutput;	// texture object for output
 	void					*hapglsl;	// shader for hap conversion
-	float					rect[4];	// output rectangle (MIN XY, MAX XY)
+	//float					rect[4];	// output rectangle (MIN XY, MAX XY)
 	t_atom_long				dim[2];		// output dim
 	HapQuickTimePlayback	*hap;
 		
@@ -22,12 +22,11 @@ typedef struct _jit_gl_hap
 	char				useshader;
 	char				newfile;
 	char				deletetex;
-	CVPixelBufferRef	buffer;
 	char				validframe;
 	char				movieloaded;
+	
+	CVPixelBufferRef	buffer;
 	GLuint          	texture;
-	long				width;
-	long				height;
     GLuint				backingHeight;
     GLuint				backingWidth;
     GLuint				roundedWidth;
@@ -64,6 +63,7 @@ static t_symbol *ps_unbind;
 static t_symbol *ps_width;
 static t_symbol *ps_height;
 static t_symbol *ps_glid;
+static t_symbol *ps_draw;
 
 static GLuint tempFBO = 0;
 
@@ -118,6 +118,7 @@ t_jit_err jit_gl_hap_init(void)
 	ps_width = gensym("width");
 	ps_height = gensym("height");
 	ps_glid = gensym("glid");	
+	ps_draw = gensym("draw");
 	
 	return JIT_ERR_NONE;
 }
@@ -148,7 +149,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->movieloaded = 0;
 		x->deletetex = 0;
 		x->texture = 0;
-		x->width = x->height = 0;
+		x->dim[0] = x->dim[1] = 0;
 		x->backingWidth = x->backingHeight = 0;
 		x->roundedWidth = x->roundedHeight = 0;
 		x->internalFormat = x->newInternalFormat = 0;
@@ -243,11 +244,11 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		GLuint width = jit_attr_getlong(x->texoutput,ps_width);
 		GLuint height = jit_attr_getlong(x->texoutput,ps_height);
 		
-		if(width!=x->width || height!=x->height) {
-			long dim[2];
-			dim[0] = width = x->width;
-			dim[1] = height = x->height;
-			jit_attr_setlong_array(x->texoutput, gensym("dim"), 2, dim);
+		if(width!=x->dim[0] || height!=x->dim[1]) {
+			width = x->dim[0];
+			height = x->dim[1];
+			jit_attr_setlong_array(x->texoutput, gensym("dim"), 2, x->dim);
+			jit_attr_user_touch(x, gensym("dim"));
 		}
 		
 		if(x->drawhap) {
@@ -274,6 +275,8 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER, previousDrawFBO);
 
 		x->validframe = 0;
+		
+		jit_object_notify(x, ps_draw, NULL);
 	}
 	
 	[x->hap releaseCurFrame];
@@ -382,8 +385,8 @@ t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_a
 			return JIT_ERR_OUT_OF_MEM;
 		}
 	}
+	
 	jit_atom_setsym(*av,jit_attr_getsym(x->texoutput,_jit_sym_name));
-	// jit_object_post((t_object *)x,"jit.gl.slab: sending output: %s", JIT_SYM_SAFECSTR(jit_attr_getsym(x->output,_jit_sym_name)));
 	
 	return JIT_ERR_NONE;
 }
@@ -583,15 +586,15 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 		x->buffer = frame;
 		CVPixelBufferLockBaseAddress(x->buffer, kCVPixelBufferLock_ReadOnly);
 		
-		x->width = CVPixelBufferGetWidth(x->buffer);
-		x->height = CVPixelBufferGetHeight(x->buffer);
+		x->dim[0] = CVPixelBufferGetWidth(x->buffer);
+		x->dim[1] = CVPixelBufferGetHeight(x->buffer);
 
 		if(x->buffer) {
 			size_t extraRight, extraBottom;
 
 			CVPixelBufferGetExtendedPixels(x->buffer, NULL, &extraRight, NULL, &extraBottom);
-			x->roundedWidth = x->width + extraRight;
-			x->roundedHeight = x->height + extraBottom;
+			x->roundedWidth = x->dim[0] + extraRight;
+			x->roundedHeight = x->dim[1] + extraBottom;
 			if (x->roundedWidth % 4 != 0 || x->roundedHeight % 4 != 0) {
 				x->validframe = 0;
 				return;
@@ -641,8 +644,8 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 		CGSize imageSize = CVImageBufferGetEncodedSize(frame);
 		x->texture = CVOpenGLTextureGetName(frame);
 		x->useshader = 0;
-		x->width = (long)imageSize.width;
-		x->height = (long)imageSize.height;
+		x->dim[0] = (t_atom_long)imageSize.width;
+		x->dim[1] = (t_atom_long)imageSize.height;
 		x->validframe = 1;
 		x->target = GL_TEXTURE_RECTANGLE_ARB;
 		if(x->drawhap) {
