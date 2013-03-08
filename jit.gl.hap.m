@@ -3,18 +3,20 @@
 #include "jit.common.h"
 #include "jit.gl.h"
 
-#include "Hap_c_interface.h"
+#include "HapQuickTimePlayback.h"
 #include "jit.gl.hap.glsl.h"
 
 typedef struct _jit_gl_hap 
 {
 	t_object			ob;
-	void				*ob3d;	
-	void				*hap;
+	void				*ob3d;
 	t_symbol			*file;
-	
+		
+	void				*texoutput;	// texture object for output
 	void				*hapglsl;	// shader for hap conversion
 	
+	HapQuickTimePlayback	*hap;
+		
 	char				useshader;
 	char				newfile;
 	CVPixelBufferRef	buffer;
@@ -82,8 +84,13 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 
 	if (x = (t_jit_gl_hap *)jit_object_alloc(_jit_gl_hap_class)) {
 		jit_ob3d_new(x, dest_name);
-		x->hap = hapQT_new(x);
+
+		x->hap = [[HapQuickTimePlayback alloc] init];
+		if(x->hap)
+			[x->hap setJitob:x];
+		
 		x->file = _jit_sym_nothing;
+		x->texoutput = jit_object_new(gensym("jit_gl_texture"), dest_name);
 		x->hapglsl = jit_object_new(gensym("jit_gl_shader"), dest_name);
 		x->buffer = NULL;
 		x->useshader = 0;
@@ -104,10 +111,13 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 
 void jit_gl_hap_free(t_jit_gl_hap *x)
 {
+	if(x->texoutput) {
+		jit_object_free(x->texoutput);
+	}
 	if(x->hapglsl) {
 		jit_object_free(x->hapglsl);
 	}
-	hapQT_free(x->hap);
+	[x->hap release];
 	jit_ob3d_free(x);
 }
 
@@ -118,11 +128,11 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 	t_jit_gl_drawinfo drawinfo;
 	
 	if(x->newfile) {
-		hapQT_read(x->hap, (const char *)x->file->s_name);
+		[x->hap read:(const char *)x->file->s_name];
 		x->newfile = 0;
 	}
 	
-	hapQT_getCurFrame(x->hap);
+	[x->hap getCurFrame];
 	
 	if(jit_gl_drawinfo_setup(x,&drawinfo)) return result;
 	
@@ -294,7 +304,7 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		x->validframe = 0;
 	}
 	
-	hapQT_releaseCurFrame(x->hap);
+	[x->hap releaseCurFrame];
 	jit_gl_report_error("hap_draw end");		
 	return result;
 }
@@ -313,7 +323,10 @@ t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
 		jit_attr_setsym(x->hapglsl, gensym("drawto"), dest_name);
 		jit_object_method(x->hapglsl, gensym("readbuffer"), jit_gl_hap_glsl_jxs);
 	}
-
+	
+	if(x->texoutput)
+		jit_attr_setsym(x->texoutput, gensym("drawto"), dest_name);
+		
 	return JIT_ERR_NONE;
 }
 
@@ -354,6 +367,10 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 		}		
 	}
 }
+
+#define kHapPixelFormatTypeRGB_DXT1 'DXt1'
+#define kHapPixelFormatTypeRGBA_DXT5 'DXT5'
+#define kHapPixelFormatTypeYCoCg_DXT5 'DYt5'
 
 void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 {

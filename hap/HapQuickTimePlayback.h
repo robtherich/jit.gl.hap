@@ -39,6 +39,8 @@
 
 //#else
 
+void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
+
 @interface HapQuickTimePlayback : NSObject
 {
     QTMovie                 *movie;

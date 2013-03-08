@@ -33,41 +33,6 @@
 #import <QuickTime/QuickTime.h>
 #import "HapSupport.h"
 
-#include "Hap_c_interface.h"
-
-void *hapQT_new(void *jitob)
-{
-	HapQuickTimePlayback *hap = [[HapQuickTimePlayback alloc] init];
-	if(hap)
-		[hap setJitob:jitob];
-	return (void *)hap;
-}
-
-void hapQT_free(void *instance)
-{
-	[(id)instance release];
-}
-
-void hapQT_setglcontext(void *instance, CGLContextObj ctx)
-{
-	[(HapQuickTimePlayback *)instance setGLContext:ctx];
-}
-
-void hapQT_read(void *instance, const char *filePath)
-{
-	[(HapQuickTimePlayback *)instance read:filePath];
-}
-
-void hapQT_getCurFrame(void *instance)
-{
-	[(HapQuickTimePlayback *)instance getCurFrame];
-}
-
-void hapQT_releaseCurFrame(void *instance)
-{
-	[(HapQuickTimePlayback *)instance releaseCurFrame];
-}
-
 //Whenever a frame is ready this gets called by the QTVisualContext, usually on a background thread
 static void VisualContextFrameCallback(QTVisualContextRef visualContext, const CVTimeStamp *timeStamp, void *refCon)
 {
