@@ -22,6 +22,7 @@ extern "C" {
 	
 	void *hapQT_new(void *jitob);
 	void hapQT_free(void *instance);
+	void hapQT_setglcontext(void *instance, CGLContextObj ctx);
 	void hapQT_read(void *instance, const char *filePath);
 	void hapQT_getCurFrame(void *instance);
 	void hapQT_releaseCurFrame(void *instance);

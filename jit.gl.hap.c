@@ -4,12 +4,19 @@
 #include "jit.gl.h"
 
 #include "Hap_c_interface.h"
+#include "jit.gl.hap.glsl.h"
 
 typedef struct _jit_gl_hap 
 {
 	t_object			ob;
 	void				*ob3d;	
 	void				*hap;
+	t_symbol			*file;
+	
+	void				*hapglsl;	// shader for hap conversion
+	
+	char				useshader;
+	char				newfile;
 	CVPixelBufferRef	buffer;
 	char				validframe;
 	GLuint          	texture;
@@ -37,6 +44,8 @@ t_jit_err build_simple_chunk(t_jit_gl_hap *x);
 
 void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
 
+static t_symbol *ps_bind;
+static t_symbol *ps_unbind;
 
 // --------------------------------------------------------------------------------
 
@@ -60,6 +69,9 @@ t_jit_err jit_gl_hap_init(void)
 
 	jit_class_register(_jit_gl_hap_class);
 
+	ps_bind = gensym("bind");
+	ps_unbind = gensym("unbind");
+	
 	return JIT_ERR_NONE;
 }
 
@@ -71,7 +83,10 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 	if (x = (t_jit_gl_hap *)jit_object_alloc(_jit_gl_hap_class)) {
 		jit_ob3d_new(x, dest_name);
 		x->hap = hapQT_new(x);
+		x->file = _jit_sym_nothing;
+		x->hapglsl = jit_object_new(gensym("jit_gl_shader"), dest_name);
 		x->buffer = NULL;
+		x->useshader = 0;
 		x->validframe = 0;
 		x->texture = 0;
 		x->width = x->height = 0;
@@ -89,6 +104,9 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 
 void jit_gl_hap_free(t_jit_gl_hap *x)
 {
+	if(x->hapglsl) {
+		jit_object_free(x->hapglsl);
+	}
 	hapQT_free(x->hap);
 	jit_ob3d_free(x);
 }
@@ -97,10 +115,19 @@ void jit_gl_hap_free(t_jit_gl_hap *x)
 t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 {
 	t_jit_err result = JIT_ERR_NONE;
+	t_jit_gl_drawinfo drawinfo;
+	
+	if(x->newfile) {
+		hapQT_read(x->hap, (const char *)x->file->s_name);
+		x->newfile = 0;
+	}
 	
 	hapQT_getCurFrame(x->hap);
 	
+	if(jit_gl_drawinfo_setup(x,&drawinfo)) return result;
+	
 	if(x->validframe) {	
+		
 		glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
 		glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
 		glEnable(GL_TEXTURE_2D);
@@ -156,82 +183,119 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 
 		glPopClientAttrib();
 		glPopAttrib();
+		
 
 /////////////////////////////////////////////////////
 
-		glMatrixMode(GL_MODELVIEW);			
-		glLoadIdentity();
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluOrtho2D(0.0, 1.0, 0.0, 1.0);				
-		glMatrixMode(GL_MODELVIEW);
-		glDisable(GL_LIGHTING);
-		
-		// bind shader
-		//if(x->shader) {
-		//	jit_atom_setobj(&a, x);
-		//	object_method_typed(x->shader, ps_bind, 1, &a, NULL);
-		//}
-		
+		//CGLContextObj cgl_ctx = [[self openGLContext] CGLContextObj];
+		//CGLLockContext(cgl_ctx);
+		//NSRect bounds = self.bounds;
+
+		GLsizei width = 320;
+		GLsizei height = 240;
+		GLsizei destrectw = 0;
+		GLsizei destrecth = 0;
+				
+		glColor4f(1,1,1,1);
+
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_BLEND);
         glHint(GL_CLIP_VOLUME_CLIPPING_HINT_EXT, GL_FASTEST);
-		
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		
+        
+        glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+        glLoadIdentity();
+        glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+        glLoadIdentity();
+        glViewport(0, 0, width, height);
+        glOrtho(0, width, 0, height, -1.0, 1.0);
+        
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+        
         // clear the view if the texture won't fill it
         glClearColor(0.0,0.0,0.0,0.0);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glEnable(GL_TEXTURE_2D);
+        
+		double bAspect = width/height;
+		double aAspect = x->width/x->height;
+        
+        // if the rect i'm trying to fit stuff *into* is wider than the rect i'm resizing
+        if (bAspect > aAspect){
+            destrecth = height;
+            destrectw = destrecth * aAspect;
+        }
+        // else if the rect i'm resizing is wider than the rect it's going into
+        else if (bAspect < aAspect) {
+            destrectw = width;
+            destrecth = destrectw / aAspect;
+        }
+        else {
+            destrectw = width;
+            destrecth = height;
+        }
 		
+        //destRect.origin.x = (bounds.size.width-destRect.size.width)/2.0+bounds.origin.x;
+        //destRect.origin.y = (bounds.size.height-destRect.size.height)/2.0+bounds.origin.y;
+        
         GLfloat vertices[] =
         {
             0, 0,
-			1, 0,
-			1, 1,
-			0, 1
+            destrectw, 0,
+            destrectw, destrecth,
+            0,destrecth
         };
         
         GLfloat texCoords[] =
         {
-            0, 0,
-			1, 0,
-			1, 1,
-			0, 1
+            0.0, x->height,
+            x->width, x->height,
+            x->width, 0.0,
+            0.0, 0.0
         };
+        
+		texCoords[1] /= (float)x->backingHeight;
+		texCoords[3] /= (float)x->backingHeight;
+		texCoords[5] /= (float)x->backingHeight;
+		texCoords[7] /= (float)x->backingHeight;
+		texCoords[2] /= (float)x->backingWidth;
+		texCoords[4] /= (float)x->backingWidth;
+        
+        glBindTexture(GL_TEXTURE_2D,x->texture);
+        
+        glVertexPointer(2,GL_FLOAT,0,vertices);
+        glTexCoordPointer(2,GL_FLOAT,0,texCoords);
+        
+		if(x->useshader)
+			jit_object_method(x->hapglsl, ps_bind, ps_bind, 0, 0);
 		
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D,x->texture);        
-		glVertexPointer(2,GL_FLOAT,0,vertices);
-		glTexCoordPointer(2,GL_FLOAT,0,texCoords);
+        glDrawArrays(GL_QUADS,0,4);
+        jit_gl_report_error("hap_draw draw_arrays");
+		
+		if(x->useshader)
+			jit_object_method(x->hapglsl, ps_unbind, ps_unbind, 0, 0);
+		
+        glBindTexture(GL_TEXTURE_2D,0);
+        glDisable(GL_TEXTURE_2D);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+		
+		jit_gl_report_error("hap_draw disable state");
+		
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
 
-		//if (shader != NULL) {
-		//	glUseProgramObjectARB(shader);
-		//}
-
-		glDrawArrays(GL_QUADS,0,4);
-
-		//if (shader != NULL) {
-		//	glUseProgramObjectARB(NULL);
-		//}
-		
-		//if(x->shader) {
-		//	jit_atom_setobj(&a, x);
-		//	object_method_typed(x->shader, ps_unbind, 1, &a, NULL);
-		//}		
-		
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-		
-		glBindTexture(GL_TEXTURE_2D,0);
-		glDisable(GL_TEXTURE_2D);
-		
 		x->validframe = 0;
 	}
 	
 	hapQT_releaseCurFrame(x->hap);
-	
+	jit_gl_report_error("hap_draw end");		
 	return result;
 }
 
@@ -243,7 +307,13 @@ t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
 
 t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
 {
-	// nothing in this object to update. 
+	t_symbol *dest_name = _jit_sym_nothing;
+	dest_name = jit_attr_getsym(x, gensym("drawto"));
+	if(x->hapglsl) {
+		jit_attr_setsym(x->hapglsl, gensym("drawto"), dest_name);
+		jit_object_method(x->hapglsl, gensym("readbuffer"), jit_gl_hap_glsl_jxs);
+	}
+
 	return JIT_ERR_NONE;
 }
 
@@ -271,14 +341,16 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 			path_nameconform(fpath, cpath, PATH_STYLE_SLASH, PATH_TYPE_BOOT);
 			
 			//rv = x->gmi->loadFromFile((const char *)cpath);
-			hapQT_read(x->hap, (const char *)cpath);
+			x->file = gensym(cpath);
+			x->newfile = 1;
+			//hapQT_read(x->hap, (const char *)cpath);
 
-			post("loadFromFile returned %d", rv);
-			if (rv) {
-				char filepath[MAX_PATH_CHARS] = "";
+			//post("loadFromFile returned %d", rv);
+			//if (rv) {
+			//	char filepath[MAX_PATH_CHARS] = "";
 				//x->gmi->getLoadedMovieLocation(filepath, MAX_PATH_CHARS);
-				post("movie loaded from %s", filepath);
-			}
+			//	post("movie loaded from %s", filepath);
+			//}
 		}		
 	}
 }
@@ -337,6 +409,8 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 					return;
 					break;
 			}
+			x->useshader = (newPixelFormat == kHapPixelFormatTypeYCoCg_DXT5);
+			
 			size_t bytesPerRow = (x->roundedWidth * bitsPerPixel) / 8;
 			x->newDataLength = bytesPerRow * x->roundedHeight; // usually not the full length of the buffer
 			size_t actualBufferSize = CVPixelBufferGetDataSize(x->buffer);
@@ -351,6 +425,10 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 			x->validframe = 1;						
 		}
     }
+	else {
+		x->texture = CVOpenGLTextureGetName(frame);
+		x->validframe = 1;
+	}
 }
 
 

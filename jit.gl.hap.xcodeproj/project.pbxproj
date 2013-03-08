@@ -18,6 +18,9 @@
 		D435281E16E6BD2200DC2BC0 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D435281D16E6BD2200DC2BC0 /* Quartz.framework */; };
 		D435282016E6BD7F00DC2BC0 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D435281F16E6BD7F00DC2BC0 /* QTKit.framework */; };
 		D480C59216E6C2830023321E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D480C59116E6C2830023321E /* Cocoa.framework */; };
+		D480C5C016E957AF0023321E /* HapSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = D480C5BE16E957AF0023321E /* HapSupport.h */; };
+		D480C5C116E957AF0023321E /* HapSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D480C5BF16E957AF0023321E /* HapSupport.m */; };
+		D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,7 +29,7 @@
 		2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = max.jit.gl.hap.c; sourceTree = "<group>"; };
 		2282B5C410D90D3900D827D3 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
 		22CF10220EE984600054F513 /* maxmspsdk.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = maxmspsdk.xcconfig; sourceTree = SOURCE_ROOT; };
-		2FBBEAE508F335360078DB84 /* jit.gl.hap.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = jit.gl.hap.mxo; path = .bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FBBEAE508F335360078DB84 /* jit.gl.hap.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = jit.gl.hap.mxo; sourceTree = BUILT_PRODUCTS_DIR; };
 		D435280816E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Hap_QuickTime_Playback_Prefix.pch; sourceTree = "<group>"; };
 		D435280B16E6B99B00DC2BC0 /* HapQuickTimePlayback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HapQuickTimePlayback.h; sourceTree = "<group>"; };
 		D435280C16E6B99B00DC2BC0 /* HapQuickTimePlayback.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HapQuickTimePlayback.m; sourceTree = "<group>"; };
@@ -35,6 +38,10 @@
 		D435281F16E6BD7F00DC2BC0 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = /System/Library/Frameworks/QTKit.framework; sourceTree = "<absolute>"; };
 		D480C59116E6C2830023321E /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = ../../../../../../../../System/Library/Frameworks/Cocoa.framework; sourceTree = "<group>"; };
 		D480C59616E6D9810023321E /* Hap_c_interface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Hap_c_interface.h; sourceTree = "<group>"; };
+		D480C5BE16E957AF0023321E /* HapSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HapSupport.h; sourceTree = "<group>"; };
+		D480C5BF16E957AF0023321E /* HapSupport.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HapSupport.m; sourceTree = "<group>"; };
+		D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.glsl.c; sourceTree = "<group>"; };
+		D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.glsl.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +91,8 @@
 			children = (
 				2282B5AA10D90CE800D827D3 /* jit.gl.hap.c */,
 				2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */,
+				D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */,
+				D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -99,6 +108,8 @@
 		D435280516E6B99B00DC2BC0 /* hap */ = {
 			isa = PBXGroup;
 			children = (
+				D480C5BE16E957AF0023321E /* HapSupport.h */,
+				D480C5BF16E957AF0023321E /* HapSupport.m */,
 				D435280816E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch */,
 				D435280B16E6B99B00DC2BC0 /* HapQuickTimePlayback.h */,
 				D435280C16E6B99B00DC2BC0 /* HapQuickTimePlayback.m */,
@@ -116,6 +127,7 @@
 			files = (
 				D435281216E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch in Headers */,
 				D435281516E6B99B00DC2BC0 /* HapQuickTimePlayback.h in Headers */,
+				D480C5C016E957AF0023321E /* HapSupport.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +205,8 @@
 				2282B5AB10D90CE800D827D3 /* jit.gl.hap.c in Sources */,
 				2282B5AD10D90CF000D827D3 /* max.jit.gl.hap.c in Sources */,
 				D435281616E6B99B00DC2BC0 /* HapQuickTimePlayback.m in Sources */,
+				D480C5C116E957AF0023321E /* HapSupport.m in Sources */,
+				D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

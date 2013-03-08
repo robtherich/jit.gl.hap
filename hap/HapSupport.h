@@ -1,5 +1,5 @@
 /*
- HapQuickTimePlayback.h
+ HapSupport.h
  Hap QuickTime Playback
  
  Copyright (c) 2012-2013, Tom Butterworth and Vidvox LLC. All rights reserved.
@@ -29,31 +29,36 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Cocoa/Cocoa.h>
-#import <QTKit/QTKit.h>
+#ifndef QTMultiGPUTextureIssue_HapSupport_h
+#define QTMultiGPUTextureIssue_HapSupport_h
+
 #import <Foundation/Foundation.h>
+#import <QTKit/QTKit.h>
 
-//#if __LP64__
+#if __LP64__
 
-//#error Hap QuickTime support requires 32-bit QuickTime APIs but this target is 64-bit
+#error Hap QuickTime support requires 32-bit QuickTime APIs but this target is 64-bit
 
-//#else
+#else
 
-@interface HapQuickTimePlayback : NSObject
-{
-    QTMovie                 *movie;
-    QTVisualContextRef      visualContext;
-	CVImageBufferRef		curimage;
-	CGLContextObj			ctx;
-    void					*jitob;
-	BOOL					firstload;
-}
+/**
+ The four-character-codes used to describe the pixel-formats of DXT frames emitted by the Hap QuickTime codec.
+ */
+#define kHapPixelFormatTypeRGB_DXT1 'DXt1'
+#define kHapPixelFormatTypeRGBA_DXT5 'DXT5'
+#define kHapPixelFormatTypeYCoCg_DXT5 'DYt5'
 
-- (void)setJitob:(void*)ob;
-- (void)setGLContext:(CGLContextObj)glctx;
-- (void)read:(const char *)filePath;
-- (void)openMovie:(NSURL *)url;
-- (void)getCurFrame;
-- (void)releaseCurFrame;
+/**
+ Returns YES if any track of movie is a Hap track and the codec is installed to handle it, otherwise NO.
+ */
+BOOL HapQTMovieHasHapTrackPlayable(QTMovie *movie);
 
-@end
+/**
+ Returns a dictionary suitable to pass with the kQTVisualContextPixelBufferAttributesKey in an options dictionary when
+ creating a CVPixelBufferContext.
+ */
+CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary();
+
+#endif
+
+#endif
