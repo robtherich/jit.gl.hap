@@ -12,9 +12,10 @@ typedef struct _jit_gl_hap
 	void				*ob3d;
 	t_symbol			*file;
 		
-	void				*texoutput;	// texture object for output
-	void				*hapglsl;	// shader for hap conversion
-	
+	void					*texoutput;	// texture object for output
+	void					*hapglsl;	// shader for hap conversion
+	float					rect[4];	// output rectangle (MIN XY, MAX XY)
+	t_atom_long				dim[2];		// output dim
 	HapQuickTimePlayback	*hap;
 		
 	char				useshader;
@@ -45,16 +46,32 @@ t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x);
 t_jit_err build_simple_chunk(t_jit_gl_hap *x);
 
 void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
+void jit_gl_hap_sendoutput(t_jit_gl_hap *x, t_symbol *s, int argc, t_atom *argv);
+
+t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av);
 
 static t_symbol *ps_bind;
 static t_symbol *ps_unbind;
+static t_symbol *ps_width;
+static t_symbol *ps_height;
+static t_symbol *ps_glid;
+
+static GLuint tempFBO = 0;
 
 // --------------------------------------------------------------------------------
 
 t_jit_err jit_gl_hap_init(void) 
 {
-	long ob3d_flags = JIT_OB3D_NO_MATRIXOUTPUT; // no matrix output
 	void *ob3d;
+	void *attr;
+	long attrflags=0;
+	long ob3d_flags = JIT_OB3D_NO_ROTATION_SCALE;
+	ob3d_flags |= JIT_OB3D_NO_POLY_VARS;
+	ob3d_flags |= JIT_OB3D_NO_FOG;
+	ob3d_flags |= JIT_OB3D_NO_MATRIXOUTPUT;
+	ob3d_flags |= JIT_OB3D_NO_LIGHTING_MATERIAL;
+	//ob3d_flags |= JIT_OB3D_IS_SLAB;
+	ob3d_flags |= JIT_OB3D_NO_BOUNDS;
 	
 	_jit_gl_hap_class = jit_class_new("jit_gl_hap", 
 		(method)jit_gl_hap_new, (method)jit_gl_hap_free,
@@ -68,20 +85,39 @@ t_jit_err jit_gl_hap_init(void)
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_object_register,	"register", A_CANT, 0L);
 
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_read,		"read", A_GIMME, 0);
-
+	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_sendoutput, "sendoutput", A_DEFER_LOW, 0L);
+	
+	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_USURP_LOW;
+	
+	attr = jit_object_new(_jit_sym_jit_attr_offset_array,"dim",_jit_sym_long,2,attrflags,
+		(method)0L,(method)0L,0,calcoffset(t_jit_gl_hap,dim));
+	jit_class_addattr(_jit_gl_hap_class,attr);
+	
+	attr = jit_object_new(_jit_sym_jit_attr_offset_array,"rect",_jit_sym_float32,4,attrflags,
+		(method)0L,(method)0L,0,calcoffset(t_jit_gl_hap,rect));
+	jit_class_addattr(_jit_gl_hap_class,attr);
+	
+	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_OPAQUE_USER;
+	attr = jit_object_new(_jit_sym_jit_attr_offset,"out_name",_jit_sym_symbol, attrflags,
+		(method)jit_gl_hap_getattr_out_name,(method)0L,0);	
+	jit_class_addattr(_jit_gl_hap_class,attr);	
+		
 	jit_class_register(_jit_gl_hap_class);
 
 	ps_bind = gensym("bind");
 	ps_unbind = gensym("unbind");
+	ps_width = gensym("width");
+	ps_height = gensym("height");
+	ps_glid = gensym("glid");	
 	
 	return JIT_ERR_NONE;
 }
 
-
 t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 {
 	t_jit_gl_hap *x;
-
+	t_atom av[4];
+	
 	if (x = (t_jit_gl_hap *)jit_object_alloc(_jit_gl_hap_class)) {
 		jit_ob3d_new(x, dest_name);
 
@@ -91,7 +127,12 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		
 		x->file = _jit_sym_nothing;
 		x->texoutput = jit_object_new(gensym("jit_gl_texture"), dest_name);
+		jit_attr_setsym(x->texoutput,gensym("defaultimage"),gensym("black"));
+		jit_attr_setsym(x->texoutput,_jit_sym_name,jit_symbol_unique());
+		//jit_attr_setlong(x->texoutput, gensym("flip"), 0);
+		
 		x->hapglsl = jit_object_new(gensym("jit_gl_shader"), dest_name);
+		
 		x->buffer = NULL;
 		x->useshader = 0;
 		x->validframe = 0;
@@ -101,13 +142,19 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->roundedWidth = x->roundedHeight = 0;
 		x->internalFormat = x->newInternalFormat = 0;
 		x->newDataLength = 0;
+		
+		// set color to white
+		jit_atom_setfloat(av,1.);
+		jit_atom_setfloat(av+1,1.);
+		jit_atom_setfloat(av+2,1.);
+		jit_atom_setfloat(av+3,1.);
+		jit_object_method(x,gensym("color"),4,av);		
 	}
 	else {
 		x = NULL;
 	}	
 	return x;
 }
-
 
 void jit_gl_hap_free(t_jit_gl_hap *x)
 {
@@ -120,7 +167,6 @@ void jit_gl_hap_free(t_jit_gl_hap *x)
 	[x->hap release];
 	jit_ob3d_free(x);
 }
-
 
 t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 {
@@ -137,169 +183,206 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 	if(jit_gl_drawinfo_setup(x,&drawinfo)) return result;
 	
 	if(x->validframe) {	
-		
-		glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
-		glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
-		glEnable(GL_TEXTURE_2D);
-				
-		GLvoid *baseAddress = CVPixelBufferGetBaseAddress(x->buffer);
 
-		// Create a new texture if our current one isn't adequate
-		if (
-			!x->texture ||
-			(x->roundedWidth > x->backingWidth) ||
-			(x->roundedHeight > x->backingHeight) ||
-			(x->newInternalFormat != x->internalFormat)
-		) {
-			if (x->texture != 0) {
-				glDeleteTextures(1, &x->texture);
+/////////////////////////////////////////////////////
+
+		GLint previousFBO;	// make sure we pop out to the right FBO
+		GLint previousReadFBO;
+		GLint previousDrawFBO;
+		GLint previousMatrixMode;
+		
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
+		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
+		glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
+		
+		// save texture state, client state, etc.
+		glPushAttrib(GL_ALL_ATTRIB_BITS);
+		glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+		
+		// We are going to bind our FBO to our internal jit.gl.texture as COLOR_0 attachment
+		// We need the ID, width/height.
+		GLuint texid = jit_attr_getlong(x->texoutput,ps_glid);
+		GLuint width = jit_attr_getlong(x->texoutput,ps_width);
+		GLuint height = jit_attr_getlong(x->texoutput,ps_height);
+		
+		if(width!=x->width || height!=x->height) {
+			long dim[2];
+			dim[0] = x->width;
+			dim[1] = x->height;
+			jit_attr_setlong_array(x->texoutput, gensym("dim"), 2, dim);
+			width = x->width;
+			height = x->height;
+		}
+		//post("texture id is %u width %u height %u", texname, width, height);
+		
+		// FBO generation/attachment to texture
+		if(tempFBO == 0)
+			glGenFramebuffers(1, &tempFBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, tempFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE_ARB, texid, 0);
+		
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if(status == GL_FRAMEBUFFER_COMPLETE) {
+			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glViewport(0, 0,  width, height);
+			glMatrixMode(GL_TEXTURE);
+			glPushMatrix();
+			glLoadIdentity();
+			
+			glMatrixMode(GL_PROJECTION);
+			glPushMatrix();
+			glLoadIdentity();
+			glOrtho(0.0, width,  0.0,  height, -1, 1);		
+			
+			glMatrixMode(GL_MODELVIEW);
+			glPushMatrix();
+			glLoadIdentity();
+			
+			// render our qtkit texture to our jit.gl.texture's texture.
+			glColor4f(0.0, 0.0, 0.0, 1.0);
+
+			// do not need blending if we use black border for alpha and replace env mode, saves a buffer wipe
+			// we can do this since our image draws over the complete surface of the FBO, no pixel goes untouched.
+			//glEnable(GL_TEXTURE_RECTANGLE_EXT);
+			//glBindTexture(GL_TEXTURE_2D,x->texture);
+			{
+				glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
+				glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
+				glEnable(GL_TEXTURE_2D);
+						
+				GLvoid *baseAddress = CVPixelBufferGetBaseAddress(x->buffer);
+
+				// Create a new texture if our current one isn't adequate
+				if (
+					!x->texture ||
+					(x->roundedWidth > x->backingWidth) ||
+					(x->roundedHeight > x->backingHeight) ||
+					(x->newInternalFormat != x->internalFormat)
+				) {
+					if (x->texture != 0) {
+						glDeleteTextures(1, &x->texture);
+					}
+					glGenTextures(1, &x->texture);
+					glBindTexture(GL_TEXTURE_2D, x->texture);
+					
+					// On NVIDIA hardware there is a massive slowdown if DXT textures aren't POT-dimensioned, so we use POT-dimensioned backing
+					x->backingWidth = 1;
+					while (x->backingWidth < x->roundedWidth) x->backingWidth <<= 1;
+					x->backingHeight = 1;
+					while (x->backingHeight < x->roundedHeight) x->backingHeight <<= 1;
+					
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_SHARED_APPLE);
+					
+					// We allocate the texture with no pixel data, then use CompressedTexSubImage to update the content region			
+					glTexImage2D(GL_TEXTURE_2D, 0, x->newInternalFormat, x->backingWidth, x->backingHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);        
+					
+					x->internalFormat = x->newInternalFormat;
+				}
+				else {
+					glBindTexture(GL_TEXTURE_2D, x->texture);
+				}
+
+				glTextureRangeAPPLE(GL_TEXTURE_2D, x->newDataLength, baseAddress);
+				glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
+
+				glCompressedTexSubImage2D(GL_TEXTURE_2D,
+										  0,
+										  0,
+										  0,
+										  x->roundedWidth,
+										  x->roundedHeight,
+										  x->newInternalFormat,
+										  x->newDataLength,
+										  baseAddress);
+
+				glPopClientAttrib();
+				glPopAttrib();
+			
 			}
-			glGenTextures(1, &x->texture);
-			glBindTexture(GL_TEXTURE_2D, x->texture);
 			
-			// On NVIDIA hardware there is a massive slowdown if DXT textures aren't POT-dimensioned, so we use POT-dimensioned backing
-			x->backingWidth = 1;
-			while (x->backingWidth < x->roundedWidth) x->backingWidth <<= 1;
-			x->backingHeight = 1;
-			while (x->backingHeight < x->roundedHeight) x->backingHeight <<= 1;
+			glDisable(GL_BLEND);
+			glDisable(GL_LIGHTING);
+
+			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);	
+			glTexParameterf( GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+			glTexParameterf( GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+			glTexParameterf( GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE );
+			glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+			// move to VA for rendering
+			/*GLfloat tex_coords[] =
+			{
+				width,height,
+				0.0,height,
+				0.0,0.0,
+				width,0.0
+			};*/
 			
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_SHARED_APPLE);
+			GLfloat verts[] = 
+			{
+				width,height,
+				0.0,height,
+				0.0,0.0,
+				width,0.0
+			};
 			
-			// We allocate the texture with no pixel data, then use CompressedTexSubImage to update the content region			
-			glTexImage2D(GL_TEXTURE_2D, 0, x->newInternalFormat, x->backingWidth, x->backingHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);        
+			GLfloat tex_coords[] =
+			{
+				0.0, height,
+				width, height,
+				width, 0.0,
+				0.0, 0.0
+			};
 			
-			x->internalFormat = x->newInternalFormat;
+			tex_coords[1] /= (float)x->backingHeight;
+			tex_coords[3] /= (float)x->backingHeight;
+			tex_coords[5] /= (float)x->backingHeight;
+			tex_coords[7] /= (float)x->backingHeight;
+			tex_coords[2] /= (float)x->backingWidth;
+			tex_coords[4] /= (float)x->backingWidth;			
+			
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D,x->texture);
+			
+			glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+			glTexCoordPointer(2, GL_FLOAT, 0, tex_coords );
+			glEnableClientState(GL_VERTEX_ARRAY);		
+			glVertexPointer(2, GL_FLOAT, 0, verts );
+			
+			glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+			
+			glBindTexture(GL_TEXTURE_2D,0);
+			
+			glDisableClientState(GL_VERTEX_ARRAY);
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+			
+			glMatrixMode(GL_MODELVIEW);
+			glPopMatrix();
+			
+			glMatrixMode(GL_PROJECTION);
+			glPopMatrix();
+			
+			glMatrixMode(GL_TEXTURE);
+			glPopMatrix();
 		}
 		else {
-			glBindTexture(GL_TEXTURE_2D, x->texture);
+			jit_object_error((t_object*)x, "could not bind to FBO");
 		}
-
-		glTextureRangeAPPLE(GL_TEXTURE_2D, x->newDataLength, baseAddress);
-		glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
-
-		glCompressedTexSubImage2D(GL_TEXTURE_2D,
-								  0,
-								  0,
-								  0,
-								  x->roundedWidth,
-								  x->roundedHeight,
-								  x->newInternalFormat,
-								  x->newDataLength,
-								  baseAddress);
 
 		glPopClientAttrib();
 		glPopAttrib();
 		
-
-/////////////////////////////////////////////////////
-
-		//CGLContextObj cgl_ctx = [[self openGLContext] CGLContextObj];
-		//CGLLockContext(cgl_ctx);
-		//NSRect bounds = self.bounds;
-
-		GLsizei width = 320;
-		GLsizei height = 240;
-		GLsizei destrectw = 0;
-		GLsizei destrecth = 0;
-				
-		glColor4f(1,1,1,1);
-
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_BLEND);
-        glHint(GL_CLIP_VOLUME_CLIPPING_HINT_EXT, GL_FASTEST);
-        
-        glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-        glLoadIdentity();
-        glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-        glLoadIdentity();
-        glViewport(0, 0, width, height);
-        glOrtho(0, width, 0, height, -1.0, 1.0);
-        
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-        
-        // clear the view if the texture won't fill it
-        glClearColor(0.0,0.0,0.0,0.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glEnable(GL_TEXTURE_2D);
-        
-		double bAspect = width/height;
-		double aAspect = x->width/x->height;
-        
-        // if the rect i'm trying to fit stuff *into* is wider than the rect i'm resizing
-        if (bAspect > aAspect){
-            destrecth = height;
-            destrectw = destrecth * aAspect;
-        }
-        // else if the rect i'm resizing is wider than the rect it's going into
-        else if (bAspect < aAspect) {
-            destrectw = width;
-            destrecth = destrectw / aAspect;
-        }
-        else {
-            destrectw = width;
-            destrecth = height;
-        }
-		
-        //destRect.origin.x = (bounds.size.width-destRect.size.width)/2.0+bounds.origin.x;
-        //destRect.origin.y = (bounds.size.height-destRect.size.height)/2.0+bounds.origin.y;
-        
-        GLfloat vertices[] =
-        {
-            0, 0,
-            destrectw, 0,
-            destrectw, destrecth,
-            0,destrecth
-        };
-        
-        GLfloat texCoords[] =
-        {
-            0.0, x->height,
-            x->width, x->height,
-            x->width, 0.0,
-            0.0, 0.0
-        };
-        
-		texCoords[1] /= (float)x->backingHeight;
-		texCoords[3] /= (float)x->backingHeight;
-		texCoords[5] /= (float)x->backingHeight;
-		texCoords[7] /= (float)x->backingHeight;
-		texCoords[2] /= (float)x->backingWidth;
-		texCoords[4] /= (float)x->backingWidth;
-        
-        glBindTexture(GL_TEXTURE_2D,x->texture);
-        
-        glVertexPointer(2,GL_FLOAT,0,vertices);
-        glTexCoordPointer(2,GL_FLOAT,0,texCoords);
-        
-		if(x->useshader)
-			jit_object_method(x->hapglsl, ps_bind, ps_bind, 0, 0);
-		
-        glDrawArrays(GL_QUADS,0,4);
-        jit_gl_report_error("hap_draw draw_arrays");
-		
-		if(x->useshader)
-			jit_object_method(x->hapglsl, ps_unbind, ps_unbind, 0, 0);
-		
-        glBindTexture(GL_TEXTURE_2D,0);
-        glDisable(GL_TEXTURE_2D);
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-		
-		jit_gl_report_error("hap_draw disable state");
-		
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
+		glBindFramebufferEXT(GL_FRAMEBUFFER, previousFBO);	
+		glBindFramebufferEXT(GL_READ_FRAMEBUFFER, previousReadFBO);
+		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER, previousDrawFBO);
 
 		x->validframe = 0;
 	}
@@ -318,7 +401,10 @@ t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
 t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
 {
 	t_symbol *dest_name = _jit_sym_nothing;
+	t_jit_gl_drawinfo drawinfo;
+	
 	dest_name = jit_attr_getsym(x, gensym("drawto"));
+	
 	if(x->hapglsl) {
 		jit_attr_setsym(x->hapglsl, gensym("drawto"), dest_name);
 		jit_object_method(x->hapglsl, gensym("readbuffer"), jit_gl_hap_glsl_jxs);
@@ -327,6 +413,17 @@ t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
 	if(x->texoutput)
 		jit_attr_setsym(x->texoutput, gensym("drawto"), dest_name);
 		
+	if(tempFBO != 0) {
+		glDeleteFramebuffers(1, &tempFBO);
+		tempFBO = 0;
+	}
+	
+	// our texture has to be bound in the new context before we can use it
+	// http://cycling74.com/forums/topic.php?id=29197
+	jit_gl_drawinfo_setup(x, &drawinfo);
+	jit_gl_bindtexture(&drawinfo, jit_attr_getsym(x->texoutput, _jit_sym_name), 0);
+	jit_gl_unbindtexture(&drawinfo, jit_attr_getsym(x->texoutput, _jit_sym_name), 0);
+
 	return JIT_ERR_NONE;
 }
 
@@ -366,6 +463,40 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 			//}
 		}		
 	}
+}
+
+void jit_gl_hap_sendoutput(t_jit_gl_hap *x, t_symbol *s, int argc, t_atom *argv)
+{
+	if (x->texoutput) {
+		s = jit_atom_getsym(argv);
+		
+		argc--;
+		if (argc) {
+			argv++;
+		}
+		else {
+			argv = NULL;
+		}
+		object_method_typed(x->texoutput,s,argc,argv,NULL);
+	}
+}
+
+t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av)
+{
+	if ((*ac)&&(*av)) {
+		//memory passed in, use it
+	} else {
+		//otherwise allocate memory
+		*ac = 1;
+		if (!(*av = jit_getbytes(sizeof(t_atom)*(*ac)))) {
+			*ac = 0;
+			return JIT_ERR_OUT_OF_MEM;
+		}
+	}
+	jit_atom_setsym(*av,jit_attr_getsym(x->texoutput,_jit_sym_name));
+	// jit_object_post((t_object *)x,"jit.gl.slab: sending output: %s", JIT_SYM_SAFECSTR(jit_attr_getsym(x->output,_jit_sym_name)));
+	
+	return JIT_ERR_NONE;
 }
 
 #define kHapPixelFormatTypeRGB_DXT1 'DXt1'
@@ -447,5 +578,4 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 		x->validframe = 1;
 	}
 }
-
 
