@@ -56,6 +56,9 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 
 @implementation HapQuickTimePlayback
 
+@synthesize movie;
+@synthesize lasterror;
+
 - (id)init
 {
 	self = [super init];
@@ -75,28 +78,22 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 	ctx = glctx;
 }
 
-- (void)read:(const char *)filePath
+- (BOOL)read:(const char *)filePath
 {
 	NSString * movieFilePath = [[NSString alloc] initWithCString:filePath encoding:NSUTF8StringEncoding];
 	if (movieFilePath) {
 		if ([QTMovie canInitWithFile:movieFilePath]) {
 			NSURL *url = [NSURL fileURLWithPath:movieFilePath];
-			[self openMovie:url];
+			return [self openMovie:url];
 		}
 	}
+	return NO;
 }
 
-- (void)openMovie:(NSURL *)url
+- (BOOL)openMovie:(NSURL *)url
 {
     // Stop and release our previous movie
-    
-    if (movie)
-    {
-        [movie stop];
-        SetMovieVisualContext([movie quickTimeMovie], NULL);
-        [movie release];
-        movie = nil;
-    }
+    [self disposeMovie];
     
     // For simplicity we rebuild the visual context every time - you could re-use it if the new movie
     // will use exactly the same kind of context as the previous one.
@@ -104,34 +101,36 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
     visualContext = NULL;
     
     // Set up the new movie and visual context
-	NSError *error=NULL;
-    movie = [[QTMovie alloc] initWithURL:url error:&error];
-	if(error)
-		NSLog(@"Error: %@", error);
+	lasterror=NULL;
+    movie = [[QTMovie alloc] initWithURL:url error:&lasterror];
+	
+	if(!lasterror) {			
+		[movie setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsAttribute];
 		
-    [movie setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsAttribute];
-    
-    // It's important not to play the movie until it has been attached to a context, otherwise it will start decompression with a non-optimal pixel format
-    OSStatus err = noErr;
-	
-    // Check if the movie has a Hap video track
-    if (HapQTMovieHasHapTrackPlayable(movie)) {
-        CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
-        // QT Visual Context attributes
-        NSDictionary *visualContextOptions = [NSDictionary dictionaryWithObject:(NSDictionary *)pixelBufferOptions forKey:(NSString *)kQTVisualContextPixelBufferAttributesKey];
-        CFRelease(pixelBufferOptions);
-        err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &visualContext);
-	}
-    else {
-		err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
-	}
-	
-	if (err == noErr) {
-		err = SetMovieVisualContext([movie quickTimeMovie],visualContext);
-		if (err == noErr) {
-			[movie play];
+		// It's important not to play the movie until it has been attached to a context, otherwise it will start decompression with a non-optimal pixel format
+		OSStatus err = noErr;
+		
+		// Check if the movie has a Hap video track
+		if (HapQTMovieHasHapTrackPlayable(movie)) {
+			CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
+			// QT Visual Context attributes
+			NSDictionary *visualContextOptions = [NSDictionary dictionaryWithObject:(NSDictionary *)pixelBufferOptions forKey:(NSString *)kQTVisualContextPixelBufferAttributesKey];
+			CFRelease(pixelBufferOptions);
+			err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &visualContext);
 		}
-    }
+		else {
+			err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
+		}
+		
+		if (err == noErr) {
+			err = SetMovieVisualContext([movie quickTimeMovie],visualContext);
+			if (err == noErr) {
+				//[movie play];
+				return YES;
+			}
+		}
+	}
+	return NO;
 }
 
 - (void)getCurFrame
@@ -140,16 +139,14 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
     CVImageBufferRef image = NULL;
     err = QTVisualContextCopyImageForTime(visualContext, nil, nil, &image);
     
-    if (err == noErr && image)
-    {
+    if (err == noErr && image) {
         //[(HapQuickTimePlayback *)refCon displayFrame:image];
 		curimage = image;
 		jit_gl_hap_draw_frame(jitob, image);
 		
         //CVBufferRelease(image);
     }
-    else if (err != noErr)
-    {
+    else if (err != noErr) {
         NSLog(@"err %hd at QTVisualContextCopyImageForTime(), %s", err, __func__);
     }
     
@@ -157,12 +154,22 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 }
 
 - (void)releaseCurFrame
-{
-    
+{    
     if (curimage) {
         CVBufferRelease(curimage);
+		curimage = NULL;
 	}
     QTVisualContextTask(visualContext);
+}
+
+- (void)disposeMovie
+{
+    if (movie) {
+        [movie stop];
+        SetMovieVisualContext([movie quickTimeMovie], NULL);
+        [movie release];
+        movie = nil;
+    }
 }
 
 @end

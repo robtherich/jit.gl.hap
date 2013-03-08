@@ -49,13 +49,18 @@ void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 	CGLContextObj			ctx;
     void					*jitob;
 	BOOL					firstload;
+	NSError					*lasterror;
 }
 
 - (void)setJitob:(void*)ob;
 - (void)setGLContext:(CGLContextObj)glctx;
-- (void)read:(const char *)filePath;
-- (void)openMovie:(NSURL *)url;
+- (BOOL)read:(const char *)filePath;
+- (BOOL)openMovie:(NSURL *)url;
 - (void)getCurFrame;
 - (void)releaseCurFrame;
+- (void)disposeMovie;
+
+@property (readonly) QTMovie *movie;
+@property (readonly) NSError *lasterror;
 
 @end
