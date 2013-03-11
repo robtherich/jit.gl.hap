@@ -11,12 +11,12 @@
 
 // Name & Version
 PRODUCT_NAME = $(PROJECT_NAME)
-PRODUCT_VERSION = 6.1.0
+PRODUCT_VERSION = 6.1.1
 ARCHS = i386 x86_64
 
 
 // Paths
-C74SUPPORT = $(SRCROOT)/../MaxSDK-6.1.0/c74support
+C74SUPPORT = $(SRCROOT)/../MaxSDK-6.1.1/c74support
 HEADER_SEARCH_PATHS = /Developer/Headers/FlatCarbon "$(C74SUPPORT)/max-includes" "$(C74SUPPORT)/msp-includes" "$(C74SUPPORT)/jit-includes"
 FRAMEWORK_SEARCH_PATHS = "$(C74SUPPORT)/max-includes" "$(C74SUPPORT)/msp-includes" "$(C74SUPPORT)/jit-includes"
 DSTROOT = $(SRCROOT)/sdk-build
@@ -26,7 +26,7 @@ INSTALL_PATH = /
 
 // Special Files
 GCC_PREFIX_HEADER = $(C74SUPPORT)/max-includes/macho-prefix.pch
-INFOPLIST_FILE = $(SRCROOT)/../MaxSDK-6.1.0/examples/Info.plist
+INFOPLIST_FILE = $(SRCROOT)/../MaxSDK-6.1.1/examples/Info.plist
 
 
 // Architecture and Deployment
@@ -47,7 +47,7 @@ ARCHS = i386 x86_64
 // SDKROOT = $(DEVELOPER_DIR)/SDKs/MacOSX10.6.sdk
 
 // Xcode 4.3+
-// SDKROOT = macosx10.6
+SDKROOT = macosx10.6
 
 MACOSX_DEPLOYMENT_TARGET = 10.6
 

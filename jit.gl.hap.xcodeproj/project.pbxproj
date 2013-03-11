@@ -24,7 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		22301F4910D7BC6C00C1989F /* JitterAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JitterAPI.framework; path = "../MaxSDK-6.1.0/c74support/jit-includes/JitterAPI.framework"; sourceTree = SOURCE_ROOT; };
+		22301F4910D7BC6C00C1989F /* JitterAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JitterAPI.framework; path = "../MaxSDK-6.1.1/c74support/jit-includes/JitterAPI.framework"; sourceTree = SOURCE_ROOT; };
 		2282B5AA10D90CE800D827D3 /* jit.gl.hap.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = jit.gl.hap.m; sourceTree = "<group>"; };
 		2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = max.jit.gl.hap.c; sourceTree = "<group>"; };
 		2282B5C410D90D3900D827D3 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
