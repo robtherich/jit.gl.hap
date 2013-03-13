@@ -73,61 +73,55 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 	jitob = ob;
 }
 
-- (void)setGLContext:(CGLContextObj)glctx
-{
-	ctx = glctx;
-}
-
 - (BOOL)read:(const char *)filePath
 {
 	NSString * movieFilePath = [[NSString alloc] initWithCString:filePath encoding:NSUTF8StringEncoding];
 	if (movieFilePath) {
 		if ([QTMovie canInitWithFile:movieFilePath]) {
 			NSURL *url = [NSURL fileURLWithPath:movieFilePath];
-			return [self openMovie:url];
+			//return [self openMovie:url];
+			
+			// Stop and release our previous movie
+			[self disposeMovie];
+			
+			// For simplicity we rebuild the visual context every time - you could re-use it if the new movie
+			// will use exactly the same kind of context as the previous one.
+			QTVisualContextRelease(visualContext);
+			visualContext = NULL;
+			
+			// Set up the new movie and visual context
+			lasterror=NULL;
+			movie = [[QTMovie alloc] initWithURL:url error:&lasterror];
+			
+			if(!lasterror) {			
+				return YES;
+			}			
 		}
 	}
 	return NO;
 }
 
-- (BOOL)openMovie:(NSURL *)url
+- (BOOL)addMovieToContext
 {
-    // Stop and release our previous movie
-    [self disposeMovie];
-    
-    // For simplicity we rebuild the visual context every time - you could re-use it if the new movie
-    // will use exactly the same kind of context as the previous one.
-    QTVisualContextRelease(visualContext);
-    visualContext = NULL;
-    
-    // Set up the new movie and visual context
-	lasterror=NULL;
-    movie = [[QTMovie alloc] initWithURL:url error:&lasterror];
+	// It's important not to play the movie until it has been attached to a context, otherwise it will start decompression with a non-optimal pixel format
+	OSStatus err = noErr;
 	
-	if(!lasterror) {			
-		[movie setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsAttribute];
-		
-		// It's important not to play the movie until it has been attached to a context, otherwise it will start decompression with a non-optimal pixel format
-		OSStatus err = noErr;
-		
-		// Check if the movie has a Hap video track
-		if (HapQTMovieHasHapTrackPlayable(movie)) {
-			CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
-			// QT Visual Context attributes
-			NSDictionary *visualContextOptions = [NSDictionary dictionaryWithObject:(NSDictionary *)pixelBufferOptions forKey:(NSString *)kQTVisualContextPixelBufferAttributesKey];
-			CFRelease(pixelBufferOptions);
-			err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &visualContext);
-		}
-		else {
-			err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
-		}
-		
+	// Check if the movie has a Hap video track
+	if (HapQTMovieHasHapTrackPlayable(movie)) {
+		CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
+		// QT Visual Context attributes
+		NSDictionary *visualContextOptions = [NSDictionary dictionaryWithObject:(NSDictionary *)pixelBufferOptions forKey:(NSString *)kQTVisualContextPixelBufferAttributesKey];
+		CFRelease(pixelBufferOptions);
+		err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &visualContext);
+	}
+	else {
+		err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
+	}
+	
+	if (err == noErr) {
+		err = SetMovieVisualContext([movie quickTimeMovie],visualContext);
 		if (err == noErr) {
-			err = SetMovieVisualContext([movie quickTimeMovie],visualContext);
-			if (err == noErr) {
-				//[movie play];
-				return YES;
-			}
+			return YES;
 		}
 	}
 	return NO;
@@ -172,4 +166,26 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
     }
 }
 
+- (double)frameRate
+{  
+  if (movie) {
+    QTMedia *media = [[[movie tracksOfMediaType:QTMediaTypeVideo] objectAtIndex:0] media];
+    long long sampleCount = [[media attributeForKey:QTMediaSampleCountAttribute] longValue];
+    
+    QTTime durationQTTime = [[media attributeForKey:QTMediaDurationAttribute] QTTimeValue];
+    double duration = (double)durationQTTime.timeValue/durationQTTime.timeScale;
+    
+    return sampleCount/duration;
+  }
+  return 0;
+}
+
+- (long long)frameCount
+{  
+  if (movie) {
+    QTMedia *media = [[[movie tracksOfMediaType:QTMediaTypeVideo] objectAtIndex:0] media];
+	return [[media attributeForKey:QTMediaSampleCountAttribute] longValue];
+  }
+  return 0;
+}
 @end
