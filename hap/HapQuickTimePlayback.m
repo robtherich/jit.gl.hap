@@ -73,7 +73,7 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 	jitob = ob;
 }
 
-- (BOOL)read:(const char *)filePath
+- (BOOL)read:(const char *)filePath rcp:(BOOL)rcp
 {
 	NSString * movieFilePath = [[NSString alloc] initWithCString:filePath encoding:NSUTF8StringEncoding];
 	if (movieFilePath) {
@@ -91,14 +91,40 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 			
 			// Set up the new movie and visual context
 			lasterror=NULL;
-			movie = [[QTMovie alloc] initWithURL:url error:&lasterror];
+			//movie = [[QTMovie alloc] initWithURL:url error:&lasterror];
 			
-			if(!lasterror) {			
+			NSString *filePath = [url path];
+			NSDictionary *dict = [
+				NSDictionary dictionaryWithObjectsAndKeys:
+				[NSNumber numberWithBool:rcp],QTMovieRateChangesPreservePitchAttribute,
+				filePath, QTMovieFileNameAttribute,
+				nil
+			];
+
+			movie = [[QTMovie alloc] initWithAttributes:dict error:&lasterror];
+			
+			if(!lasterror) {
+				/*[
+					[NSNotificationCenter defaultCenter]
+					addObserver:self
+					selector:@selector(movieLoadStateChanged:)
+					name:QTMovieDidEndNotification
+					object:movie
+				];*/
+			
 				return YES;
 			}			
 		}
 	}
 	return NO;
+}
+
+-(void)movieDidEnd:(NSNotification *)notification
+{
+    QTMovie *m = (QTMovie *)[notification object];    
+    if (m) {
+		NSLog(@"movie ended");
+    }
 }
 
 - (BOOL)addMovieToContext
@@ -110,7 +136,22 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 	if (HapQTMovieHasHapTrackPlayable(movie)) {
 		CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
 		// QT Visual Context attributes
-		NSDictionary *visualContextOptions = [NSDictionary dictionaryWithObject:(NSDictionary *)pixelBufferOptions forKey:(NSString *)kQTVisualContextPixelBufferAttributesKey];
+		/*NSDictionary *visualContextOptions = [
+			NSDictionary dictionaryWithObjectsAndKeys:[
+				NSDictionary dictionaryWithObjectsAndKeys:
+					[NSNumber numberWithFloat:320], kQTVisualContextTargetDimensions_WidthKey,
+					[NSNumber numberWithFloat:240], kQTVisualContextTargetDimensions_HeightKey,
+					nil
+			], kQTVisualContextTargetDimensionsKey,
+			pixelBufferOptions,	kQTVisualContextPixelBufferAttributesKey,
+			nil
+		];*/
+		
+        NSDictionary *visualContextOptions = [
+			NSDictionary dictionaryWithObject:(NSDictionary *)pixelBufferOptions
+			forKey:(NSString *)kQTVisualContextPixelBufferAttributesKey
+		];
+		
 		CFRelease(pixelBufferOptions);
 		err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &visualContext);
 	}
@@ -134,17 +175,12 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
     err = QTVisualContextCopyImageForTime(visualContext, nil, nil, &image);
     
     if (err == noErr && image) {
-        //[(HapQuickTimePlayback *)refCon displayFrame:image];
 		curimage = image;
 		jit_gl_hap_draw_frame(jitob, image);
-		
-        //CVBufferRelease(image);
     }
     else if (err != noErr) {
         NSLog(@"err %hd at QTVisualContextCopyImageForTime(), %s", err, __func__);
     }
-    
-    //QTVisualContextTask(visualContext);
 }
 
 - (void)releaseCurFrame
@@ -163,6 +199,16 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
         SetMovieVisualContext([movie quickTimeMovie], NULL);
         [movie release];
         movie = nil;
+    }
+}
+
+- (void)disposeContext
+{
+    if (movie) {
+        [movie stop];
+        SetMovieVisualContext([movie quickTimeMovie], NULL);
+		QTVisualContextRelease(visualContext);
+		visualContext = NULL;
     }
 }
 

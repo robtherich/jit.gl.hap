@@ -178,10 +178,12 @@ CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary()
     CFRelease(formatNumbers[0]);
     CFRelease(formatNumbers[1]);
     CFRelease(formatNumbers[2]);
-    
+
+    //const void *keys[4] = { kCVPixelBufferPixelFormatTypeKey, kCVPixelBufferOpenGLCompatibilityKey, kCVPixelBufferWidthKey, kCVPixelBufferHeightKey };
+    //const void *values[4] = { formats, kCFBooleanTrue, [NSNumber numberWithFloat:320.0], [NSNumber numberWithFloat:240.0] };
     const void *keys[2] = { kCVPixelBufferPixelFormatTypeKey, kCVPixelBufferOpenGLCompatibilityKey };
     const void *values[2] = { formats, kCFBooleanTrue };
-    
+	
     CFDictionaryRef dictionary = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     
     CFRelease(formats);

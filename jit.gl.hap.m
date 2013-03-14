@@ -9,6 +9,7 @@
 #define JIT_GL_HAP_LOOP_OFF			0
 #define JIT_GL_HAP_LOOP_ON			1
 #define JIT_GL_HAP_LOOP_PALINDROME	2
+#define JIT_GL_HAP_LOOP_LIMITS		3
 
 typedef struct _jit_gl_hap
 {
@@ -28,13 +29,24 @@ typedef struct _jit_gl_hap
 	char				deletetex;
 	char				validframe;
 	char				movieloaded;
+	char				direction;
+	char				suppress_loopnotify;
+	char				userloop;
+	t_atom_long			prevtime;
 	
+	char				adapt;
 	float				fps;
 	t_atom_long			duration;
 	t_atom_long			framecount;
 	t_atom_long			timescale;
 	char				loop;
 	char				autostart;
+	float				rate;
+	float				vol;
+	char				rate_preserves_pitch;
+	t_atom_long			looppoints[2];
+	char				loopreport;
+	char				framereport;
 	
 	CVPixelBufferRef	buffer;
 	GLuint          	texture;
@@ -56,26 +68,37 @@ void jit_gl_hap_free(t_jit_gl_hap *x);
 void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
 void jit_gl_hap_dispose(t_jit_gl_hap *x);
 
+// ob3d
 t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x);
-
 t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint height);
 void jit_gl_hap_dodraw(t_jit_gl_hap *x, GLuint width, GLuint height);
 void jit_gl_hap_draw_end(t_jit_gl_hap *x);
 void jit_gl_hap_submit_texture(t_jit_gl_hap *x);
+void jit_gl_hap_do_report(t_jit_gl_hap *x);
 
+// movie control
 void jit_gl_hap_start(t_jit_gl_hap *x);
 void jit_gl_hap_stop(t_jit_gl_hap *x);
+void jit_gl_hap_clear_looppoints(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_frame(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
 t_jit_err jit_gl_hap_jump(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
 
+// attributes
 void jit_gl_hap_do_set_time(t_jit_gl_hap *x, t_atom_long time);
 t_jit_err jit_gl_hap_time_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
 t_jit_err jit_gl_hap_time_get(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av);
+t_jit_err jit_gl_hap_rate_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
+t_jit_err jit_gl_hap_vol_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
 void jit_gl_hap_do_loop(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_loop_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
+void jit_gl_hap_do_looppoints(t_jit_gl_hap *x);
+t_jit_err jit_gl_hap_loopstart(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
+t_jit_err jit_gl_hap_loopend(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
+t_jit_err jit_gl_hap_looppoints(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
 
+// texture
 void jit_gl_hap_sendoutput(t_jit_gl_hap *x, t_symbol *s, int argc, t_atom *argv);
 t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av);
 
@@ -128,8 +151,14 @@ t_jit_err jit_gl_hap_init(void)
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_stop,		"stop",		A_DEFER_LOW, 0L);
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_jump,		"jump",		A_DEFER_LOW, 0L);
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_frame,	"frame",	A_DEFER_LOW, 0L);
+	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_clear_looppoints,	"clear_looppoints", A_DEFER_LOW, 0L);
 	
 	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_USURP_LOW;
+	
+	attr = jit_object_new(_jit_sym_jit_attr_offset,"adapt",_jit_sym_char,attrflags,
+		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,adapt));
+	jit_class_addattr(_jit_gl_hap_class,attr);
+	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
 	
 	attr = jit_object_new(_jit_sym_jit_attr_offset_array,"dim",_jit_sym_long,2,attrflags,
 		(method)0L,(method)0L,0,calcoffset(t_jit_gl_hap,dim));
@@ -147,27 +176,26 @@ t_jit_err jit_gl_hap_init(void)
 		(method)0L,(method)jit_gl_hap_loop_set,calcoffset(t_jit_gl_hap,loop));
 	jit_class_addattr(_jit_gl_hap_class,attr);
 	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"enumindex");
-	object_addattr_parse(attr,"enumvals",_jit_sym_atom,0,"off normal palindrome");
+	object_addattr_parse(attr,"enumvals",_jit_sym_atom,0,"off normal palindrome playback-limits");
 	
 	attr = jit_object_new(_jit_sym_jit_attr_offset,"autostart",_jit_sym_char,attrflags,
 		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,autostart));
 	jit_class_addattr(_jit_gl_hap_class,attr);
 	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
+		
+	attr = jit_object_new(_jit_sym_jit_attr_offset,"rate",_jit_sym_float32,attrflags,
+		(method)0L,(method)jit_gl_hap_rate_set,calcoffset(t_jit_gl_hap,rate));
+	jit_class_addattr(_jit_gl_hap_class,attr);
 	
-	/*
-	//attr = jit_object_new(_jit_sym_jit_attr_offset,"preroll",_jit_sym_char,attrflags,
-	//					  (method)0L,(method)0L,calcoffset(t_jit_gl_hap,preroll));
-	//jit_class_addattr(_jit_gl_hap_class,attr);
+	attr = jit_object_new(_jit_sym_jit_attr_offset,"vol",_jit_sym_float32,attrflags,
+		(method)0L,(method)jit_gl_hap_vol_set,calcoffset(t_jit_gl_hap,vol));
+	jit_class_addattr(_jit_gl_hap_class,attr);	
 	
-	attr = jit_object_new(_jit_sym_jit_attr_offset,"interp",_jit_sym_char,attrflags,
-		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,interp));
+	attr = jit_object_new(_jit_sym_jit_attr_offset,"rate_preserves_pitch",_jit_sym_char,attrflags,
+		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,rate_preserves_pitch));
 	jit_class_addattr(_jit_gl_hap_class,attr);
 	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
-	
-	attr = jit_object_new(_jit_sym_jit_attr_offset,"rate",_jit_sym_float32,attrflags,
-		(method)0L,(method)jit_gl_hap_proxy_attr,calcoffset(t_jit_gl_hap,rate));
-	jit_class_addattr(_jit_gl_hap_class,attr);
-	
+		
 	attr = jit_object_new(_jit_sym_jit_attr_offset,"loopstart",_jit_sym_long,attrflags,
 		(method)0L,(method)jit_gl_hap_loopstart,calcoffset(t_jit_gl_hap,looppoints[0]));
 	jit_class_addattr(_jit_gl_hap_class,attr);
@@ -176,20 +204,19 @@ t_jit_err jit_gl_hap_init(void)
 		(method)0L,(method)jit_gl_hap_loopend,calcoffset(t_jit_gl_hap,looppoints[1]));
 	jit_class_addattr(_jit_gl_hap_class,attr);
 	
-	attr = jit_object_new(_jit_sym_jit_attr_offset,"loopreport",_jit_sym_char,attrflags,
-		(method)0L,(method)jit_gl_hap_loopreport,calcoffset(t_jit_gl_hap,loopreport));
-	jit_class_addattr(_jit_gl_hap_class,attr);
-	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
-	
 	attr = jit_object_new(_jit_sym_jit_attr_offset_array,"looppoints",_jit_sym_long,2,attrflags,
 		(method)0L,(method)jit_gl_hap_looppoints,0,calcoffset(t_jit_gl_hap,looppoints));
 	jit_class_addattr(_jit_gl_hap_class,attr);
+		
+	attr = jit_object_new(_jit_sym_jit_attr_offset,"loopreport",_jit_sym_char,attrflags,
+		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,loopreport));
+	jit_class_addattr(_jit_gl_hap_class,attr);
+	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
 	
 	attr = jit_object_new(_jit_sym_jit_attr_offset,"framereport",_jit_sym_char,attrflags,
 		(method)0L,(method)0L,calcoffset(t_jit_gl_hap, framereport));
 	jit_class_addattr(_jit_gl_hap_class,attr);
 	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
-	*/
 	
 	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_OPAQUE_USER;
 	attr = jit_object_new(_jit_sym_jit_attr_offset,"out_name",_jit_sym_symbol, attrflags,
@@ -277,13 +304,24 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->internalFormat = x->newInternalFormat = 0;
 		x->newDataLength = 0;
 		x->target = 0;
+		x->direction = 1;
+		x->suppress_loopnotify=0;
+		x->userloop = 0;
+		x->prevtime = 0;
 		
+		x->adapt = 1;
 		x->fps = 0;
 		x->duration = 0;
 		x->timescale = 0;
 		x->framecount = 0;
 		x->loop = JIT_GL_HAP_LOOP_ON;
 		x->autostart = 1;
+		x->rate = 1;
+		x->vol = 1;
+		x->rate_preserves_pitch = 1;
+		x->looppoints[0] = x->looppoints[1] = -1;
+		x->loopreport = 0;
+		x->framereport = 0;
 		
 		// set color to white
 		jit_atom_setfloat(av,1.);
@@ -306,7 +344,11 @@ void jit_gl_hap_free(t_jit_gl_hap *x)
 	if(x->hapglsl) {
 		jit_object_free(x->hapglsl);
 	}
+	
+	[x->hap disposeContext];
+	[x->hap disposeMovie];
 	[x->hap release];
+	
 	jit_ob3d_free(x);
 }
 
@@ -351,7 +393,7 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 			path_topathname(vol, fname, fpath);
 			path_nameconform(fpath, cpath, PATH_STYLE_SLASH, PATH_TYPE_BOOT);
 			x->file = gensym(cpath);
-			if(![x->hap read:(const char *)x->file->s_name]) {
+			if(![x->hap read:(const char *)x->file->s_name rcp:x->rate_preserves_pitch]) {
 				if([x->hap lasterror]) {
 					NSString * description = [[x->hap lasterror] localizedDescription];
 					jit_object_error((t_object*)x, "error loading quicktime movie: %s", [description UTF8String]);
@@ -371,8 +413,14 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 				jit_attr_user_touch(x, gensym("duration"));
 				jit_attr_user_touch(x, gensym("timescale"));
 				jit_attr_user_touch(x, gensym("framecount"));
+				
+				// if user didn't modify looppoints, reset them
+				if(!x->userloop) {
+					x->looppoints[0] = x->looppoints[1] = -1;
+				}
 				// set attributes here
 				jit_gl_hap_do_loop(x);
+				// rate must init after playback starts
 			}
 		}
 	}
@@ -391,6 +439,44 @@ void jit_gl_hap_dispose(t_jit_gl_hap *x)
 #pragma mark -
 #pragma mark open gl
 #pragma mark -
+
+t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
+{
+	if(x->movieloaded) {
+		[x->hap disposeContext];
+		x->newfile = 1;
+	}
+	return JIT_ERR_NONE;
+}
+
+t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
+{
+	t_symbol *dest_name = _jit_sym_nothing;
+	t_jit_gl_drawinfo drawinfo;
+	
+	dest_name = jit_attr_getsym(x, gensym("drawto"));
+	
+	if(x->hapglsl) {
+		jit_attr_setsym(x->hapglsl, gensym("drawto"), dest_name);
+		jit_object_method(x->hapglsl, gensym("readbuffer"), jit_gl_hap_glsl_jxs);
+	}
+	
+	if(x->texoutput)
+		jit_attr_setsym(x->texoutput, gensym("drawto"), dest_name);
+		
+	if(tempFBO != 0) {
+		glDeleteFramebuffers(1, &tempFBO);
+		tempFBO = 0;
+	}
+	
+	// our texture has to be bound in the new context before we can use it
+	// http://cycling74.com/forums/topic.php?id=29197
+	jit_gl_drawinfo_setup(x, &drawinfo);
+	jit_gl_bindtexture(&drawinfo, jit_attr_getsym(x->texoutput, _jit_sym_name), 0);
+	jit_gl_unbindtexture(&drawinfo, jit_attr_getsym(x->texoutput, _jit_sym_name), 0);
+
+	return JIT_ERR_NONE;
+}
 
 t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 {
@@ -413,9 +499,7 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		x->movieloaded = 1;
 		
 		@try {
-			if(x->autostart) {
-				[[x->hap movie] play];
-			}
+			[[x->hap movie] play];
 		}
 		@catch (NSException * e) {
 			jit_object_error((t_object*)x, "error playing movie: %s %s", [[e name]UTF8String], [[e reason]UTF8String]);
@@ -423,7 +507,20 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 			x->movieloaded = 0;
 		}
 		@finally {
-			x->newfile = 0;		
+			x->newfile = 0;
+			if(x->movieloaded) {
+				[[x->hap movie] setRate:x->rate];
+				[[x->hap movie] setVolume:x->vol];
+				jit_gl_hap_do_looppoints(x);
+				jit_attr_user_touch(x, gensym("loopstart"));
+				jit_attr_user_touch(x, gensym("loopend"));
+				jit_attr_user_touch(x, gensym("looppoints"));
+								
+				if(!x->autostart) {
+					[[x->hap movie] stop];
+					jit_gl_hap_do_set_time(x, 0);
+				}
+			}
 		}
 	}
 	
@@ -486,46 +583,12 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		x->validframe = 0;
 		
 		jit_object_notify(x, ps_draw, NULL);
+		jit_gl_hap_do_report(x);
 	}
 	
 	[x->hap releaseCurFrame];
 	
 	return result;
-}
-
-t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
-{
-	// nothing in this object to free. 
-	return JIT_ERR_NONE;
-}
-
-t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
-{
-	t_symbol *dest_name = _jit_sym_nothing;
-	t_jit_gl_drawinfo drawinfo;
-	
-	dest_name = jit_attr_getsym(x, gensym("drawto"));
-	
-	if(x->hapglsl) {
-		jit_attr_setsym(x->hapglsl, gensym("drawto"), dest_name);
-		jit_object_method(x->hapglsl, gensym("readbuffer"), jit_gl_hap_glsl_jxs);
-	}
-	
-	if(x->texoutput)
-		jit_attr_setsym(x->texoutput, gensym("drawto"), dest_name);
-		
-	if(tempFBO != 0) {
-		glDeleteFramebuffers(1, &tempFBO);
-		tempFBO = 0;
-	}
-	
-	// our texture has to be bound in the new context before we can use it
-	// http://cycling74.com/forums/topic.php?id=29197
-	jit_gl_drawinfo_setup(x, &drawinfo);
-	jit_gl_bindtexture(&drawinfo, jit_attr_getsym(x->texoutput, _jit_sym_name), 0);
-	jit_gl_unbindtexture(&drawinfo, jit_attr_getsym(x->texoutput, _jit_sym_name), 0);
-
-	return JIT_ERR_NONE;
 }
 
 t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint height)
@@ -706,6 +769,7 @@ void jit_gl_hap_start(t_jit_gl_hap *x)
 {
 	if(x->movieloaded) {
 		[[x->hap movie] play];
+		[[x->hap movie] setRate:x->rate];
 	}
 }
 
@@ -716,10 +780,27 @@ void jit_gl_hap_stop(t_jit_gl_hap *x)
 	}
 }
 
+void jit_gl_hap_clear_looppoints(t_jit_gl_hap *x)
+{
+	x->looppoints[0] = x->looppoints[1] = -1;
+	if(x->movieloaded) {
+		jit_gl_hap_do_looppoints(x);
+		jit_attr_user_touch(x, gensym("loopstart"));
+		jit_attr_user_touch(x, gensym("loopend"));
+		jit_attr_user_touch(x, gensym("looppoints"));
+	}
+}
+
 t_atom_long jit_gl_hap_frametotime(t_jit_gl_hap *x, t_atom_long frame)
 {
 	double spf = 1./x->fps;
 	return (t_atom_long)((double)frame*spf*(double)x->timescale);
+}
+
+t_atom_long jit_gl_hap_timetoframe(t_jit_gl_hap *x, t_atom_long time)
+{
+	double spu = 1./x->timescale;
+	return (t_atom_long)((double)time*spu*(double)x->fps);
 }
 
 t_jit_err jit_gl_hap_frame(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
@@ -739,6 +820,55 @@ t_jit_err jit_gl_hap_jump(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 	}
 	return JIT_ERR_NONE;
 }
+
+void jit_gl_hap_looper_notify(t_jit_gl_hap *x)
+{
+	jit_object_notify(x, gensym("loopreport"), 0L);
+}
+
+void jit_gl_hap_do_report(t_jit_gl_hap *x)
+{
+	if(x->movieloaded) {
+		t_atom_long curtime = [[x->hap movie] currentTime].timeValue;
+		
+		if(x->framereport) {
+			t_atom a;
+			t_atom_long frame = jit_gl_hap_timetoframe(x, curtime);
+			jit_atom_setlong(&a, frame);
+			jit_gl_hap_notify_atomarray_prep(x, gensym("framereport"), 1, &a);
+		}
+		
+		if(x->loopreport&&!x->suppress_loopnotify) {					
+			if(x->loop == JIT_GL_HAP_LOOP_PALINDROME) {
+				if(x->direction) {
+					if(curtime<=x->prevtime) {
+						jit_gl_hap_looper_notify(x);
+					}
+				}
+				else {
+					if(curtime>x->prevtime) {
+						jit_gl_hap_looper_notify(x);
+					}
+				}
+			}
+			else if(x->loop == JIT_GL_HAP_LOOP_ON){
+				if(curtime<x->prevtime && x->rate>0) {
+					jit_gl_hap_looper_notify(x);
+				}
+			}
+		}
+		
+		if(x->loop == JIT_GL_HAP_LOOP_PALINDROME)
+			x->direction = curtime > x->prevtime;
+		else
+			x->direction = 1;
+		
+		//jit_attr_user_touch(x, ps_time);
+		x->suppress_loopnotify = 0;
+		x->prevtime = curtime;
+	}
+}
+
 
 #pragma mark -
 #pragma mark texture
@@ -785,13 +915,15 @@ t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_a
 void jit_gl_hap_do_set_time(t_jit_gl_hap *x, t_atom_long time)
 {
 	if (x->movieloaded) {
-		//if (x->loop == LOOP_SINGLEPLAYSELECTION)
-		//	CLIP_ASSIGN(time, (double)x->looppoints[0]/GMI_TIMESCALE, (double)x->looppoints[1]/GMI_TIMESCALE);
+		if (x->loop == JIT_GL_HAP_LOOP_LIMITS)
+			CLIP_ASSIGN(time, x->looppoints[0], x->looppoints[1]);
+			
 		QTTime duration = [[x->hap movie] duration];
 		if (duration.timeValue) {
 			CLIP_ASSIGN(time, 0, duration.timeValue);
 			duration.timeValue = time;
 			[[x->hap movie] setCurrentTime: duration];
+			x->suppress_loopnotify = 1;
 		}
 	}
 }
@@ -826,29 +958,116 @@ t_jit_err jit_gl_hap_time_get(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av
 	return JIT_ERR_NONE;
 }
 
+t_jit_err jit_gl_hap_rate_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
+{
+	if (ac && av)
+		x->rate = jit_atom_getfloat(av);
+	if(x->movieloaded)
+		[[x->hap movie] setRate:x->rate];
+		
+	return JIT_ERR_NONE;
+}
+
+t_jit_err jit_gl_hap_vol_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
+{
+	if (ac && av)
+		x->vol = CLAMP(jit_atom_getfloat(av), 0, 1);
+	if(x->movieloaded)
+		[[x->hap movie] setVolume:x->vol];
+		
+	return JIT_ERR_NONE;
+}
+
 void jit_gl_hap_do_loop(t_jit_gl_hap *x)
 {
 	if(x->loop==JIT_GL_HAP_LOOP_OFF) {
+		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMoviePlaysSelectionOnlyAttribute];
 		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsAttribute];
 		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsBackAndForthAttribute];
 	}
 	else if(x->loop==JIT_GL_HAP_LOOP_ON) {
+		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMoviePlaysSelectionOnlyAttribute];
 		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsAttribute];
 		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsBackAndForthAttribute];
 	}
 	else if(x->loop==JIT_GL_HAP_LOOP_PALINDROME) {
+		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMoviePlaysSelectionOnlyAttribute];
 		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsAttribute];
 		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsBackAndForthAttribute];
+	}
+	else if(x->loop==JIT_GL_HAP_LOOP_LIMITS) {
+		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMoviePlaysSelectionOnlyAttribute];
+		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsAttribute];
+		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsBackAndForthAttribute];
 	}
 }
 
 t_jit_err jit_gl_hap_loop_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 {
 	if (ac && av)
-		x->loop = CLAMP(jit_atom_getlong(av), 0, 2);
+		x->loop = CLAMP(jit_atom_getlong(av), 0, 3);
 
 	if(x->newfile || x->movieloaded)
 		jit_gl_hap_do_loop(x);
+		
+	return JIT_ERR_NONE;
+}
+
+void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
+{
+	QTTime time = [[x->hap movie] duration];
+	QTTimeRange range;
+
+	if(x->looppoints[1]<0)
+		x->looppoints[1] = x->duration;
+
+	if(x->looppoints[0]>=x->looppoints[1] && x->looppoints[1]>0)
+		x->looppoints[0] = x->looppoints[1]-1;
+	
+	CLIP_ASSIGN(x->looppoints[1], x->looppoints[0]+1, x->duration);
+	CLIP_ASSIGN(x->looppoints[0], 0, x->looppoints[1]-1);
+		
+	time.timeValue = x->looppoints[0];
+	range.time = time;
+	time.timeValue = x->looppoints[1]-x->looppoints[0];
+	range.duration = time;
+	
+	[[x->hap movie] setSelection:range];
+}
+
+t_jit_err jit_gl_hap_loopstart(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
+{
+	if (ac && av) {
+		x->looppoints[0] = jit_atom_getlong(av);
+		x->userloop = 1;
+	}
+	if(x->movieloaded)
+		jit_gl_hap_do_looppoints(x);
+		
+	return JIT_ERR_NONE;
+}
+
+t_jit_err jit_gl_hap_loopend(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
+{
+	if (ac && av) {
+		x->looppoints[1] = jit_atom_getlong(av);
+		x->userloop = 1;
+	}
+	if(x->movieloaded)
+		jit_gl_hap_do_looppoints(x);
+		
+	return JIT_ERR_NONE;
+}
+
+t_jit_err jit_gl_hap_looppoints(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
+{
+	if (ac && av) {
+		x->looppoints[0] = jit_atom_getlong(av);
+		x->looppoints[1] = (ac>1 ? jit_atom_getlong(av+1) : 0);
+		x->userloop = 1;
+	}
+	if(x->movieloaded)
+		jit_gl_hap_do_looppoints(x);
 		
 	return JIT_ERR_NONE;
 }

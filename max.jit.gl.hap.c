@@ -30,6 +30,9 @@ t_symbol *ps_jit_gl_texture;
 t_symbol *ps_draw;
 t_symbol *ps_out_name;
 t_symbol *ps_typedmess;
+t_symbol *ps_framereport;
+t_symbol *ps_loopreport;
+t_symbol *ps_loopnotify;
 
 int C74_EXPORT main(void)
 {	
@@ -63,6 +66,9 @@ int C74_EXPORT main(void)
 	ps_draw = gensym("draw");
 	ps_out_name = gensym("out_name");
 	ps_typedmess = gensym("typedmess");
+	ps_framereport = gensym("framereport");
+	ps_loopreport = gensym("loopreport");
+	ps_loopnotify = gensym("loopnotify");
 	
 	return 0;
 }
@@ -90,6 +96,9 @@ void max_jit_gl_hap_notify(t_max_jit_gl_hap *x, t_symbol *s, t_symbol *msg, void
 		jit_atom_setsym(&a, jit_attr_getsym(max_jit_obex_jitob_get(x), ps_out_name));
 		outlet_anything(x->texout,ps_jit_gl_texture,1,&a);
 	}
+	else if (msg == ps_loopreport) {
+		max_jit_obex_dumpout(x, ps_loopnotify, 0, NULL);
+	}	
 	else if (msg == ps_typedmess && data) {
 		long ac = 0;
 		t_atom *av = NULL;
@@ -97,17 +106,7 @@ void max_jit_gl_hap_notify(t_max_jit_gl_hap *x, t_symbol *s, t_symbol *msg, void
 		object_getvalueof(data, &ac, &av);	
 		if (ac && av) {
 			msg = jit_atom_getsym(av);
-			/*if (msg == ps_framereport) {
-				double d=(long)data;
-				t_atom a;
-
-				d = jit_atom_getfloat(av + 1);
-				jit_atom_setfloat(&a, d*0.001); //convert micro to milliseconds
-				max_jit_obex_dumpout(x, ps_framecalc, 1, &a);
-			}*/
-			//else {
-				max_jit_obex_dumpout(x, msg, ac - 1, av + 1);
-			//}
+			max_jit_obex_dumpout(x, msg, ac - 1, av + 1);
 			freebytes(av, sizeof(t_atom) * ac);
 		}
 	}	

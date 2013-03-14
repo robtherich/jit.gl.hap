@@ -53,11 +53,13 @@ void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 }
 
 - (void)setJitob:(void*)ob;
-- (BOOL)read:(const char *)filePath;
+- (BOOL)read:(const char *)filePath rcp:(BOOL)rcp;
+- (void)movieDidEnd:(NSNotification *)notification;
 - (BOOL)addMovieToContext;
 - (void)getCurFrame;
 - (void)releaseCurFrame;
 - (void)disposeMovie;
+- (void)disposeContext;
 
 - (double)frameRate;
 - (long long)frameCount;
