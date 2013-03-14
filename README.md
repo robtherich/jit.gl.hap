@@ -13,6 +13,14 @@ To build the external, the [Max 6.1 SDK](http://cycling74.com/products/sdk/) mus
 
 To export and playback HAP encoded movies, the [Hap QuickTime codec](https://github.com/vidvox/hap-qt-codec) must be installed.
 
+Limitations
+===========
+
+Currently only supported on 32 bit Macs, OS 10.6 and later.
+Requires [Max 6.1](http://cycling74.com/products/max/) and later 
+
+Modifying the dim attribute (native movie dimensions) is currently not supported.
+
 
 Open-Source
 ===========
