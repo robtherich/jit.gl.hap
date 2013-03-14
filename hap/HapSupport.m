@@ -27,9 +27,14 @@
  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+ Modified by Rob Ramirez for jit.gl.hap Max 6 external, 2013 
  */
 
 #include "HapSupport.h"
+
+#ifndef C74_X64
+
 #import <QuickTime/QuickTime.h>
 
 /*
@@ -190,3 +195,5 @@ CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary()
     
     return dictionary;
 }
+
+#endif

@@ -1,10 +1,13 @@
 // max.jit.gl.hap.c
-// sample GL group object which draws a simple quadrilateral. no matrixoutput.
-// Copyright 2002-2005 - Cycling '74
+
+#include "ext.h"
+
+#ifdef C74_X64
+C74_EXTERNAL_NOT_ON_X64("jit.gl.hap")
+#else
 
 #include "jit.common.h"
 #include "jit.gl.h"
-
 
 typedef struct _max_jit_gl_hap 
 {
@@ -191,4 +194,5 @@ void *max_jit_gl_hap_new(t_symbol *s, long argc, t_atom *argv)
 	return (x);
 }
 
+#endif
 

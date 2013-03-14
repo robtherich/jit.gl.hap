@@ -27,11 +27,16 @@
  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+ Modified by Rob Ramirez for jit.gl.hap Max 6 external, 2013
  */
+
+#import "HapSupport.h"
+
+#ifndef C74_X64
 
 #import "HapQuickTimePlayback.h"
 #import <QuickTime/QuickTime.h>
-#import "HapSupport.h"
 
 //Whenever a frame is ready this gets called by the QTVisualContext, usually on a background thread
 static void VisualContextFrameCallback(QTVisualContextRef visualContext, const CVTimeStamp *timeStamp, void *refCon)
@@ -235,3 +240,5 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
   return 0;
 }
 @end
+
+#endif

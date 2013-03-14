@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="./_c74_ref.xsl" type="text/xsl"?>
+<!--Data marked TEXT_HERE, INLET_TYPE, OUTLET_TYPE, ARG_NAME and ARG_TYPE need to be filled in-->
+<c74object category="" module="" name="jit.gl.hap">
+	<digest>
+		Provides native HAP codec support
+	</digest>
+	<description><o>jit.gl.hap</o> provides native support for the HAP quicktime codec. Images are decoded
+		and rendered directly to an OpenGL texture. Non-hap quicktime files are also supported.
+		See the <a href="http://vdmx.vidvox.net/blog/hap">vidvox HAP project</a> for more info
+		on the HAP codec.
+	</description>
+	<!--METADATA-->
+	<metadatalist>
+		<metadata name="author">
+			Cycling '74
+		</metadata>
+		<metadata name="tag">
+			TEXT_HERE
+		</metadata>
+	</metadatalist>
+	<!--INLETS-->
+	<inletlist>
+		<inlet id="0" type="INLET_TYPE">
+			<digest>
+				messages to this 3d object
+			</digest>
+			<description>
+				TEXT_HERE
+			</description>
+		</inlet>
+		<inlet id="1" type="INLET_TYPE">
+			<digest>
+			</digest>
+			<description>
+				TEXT_HERE
+			</description>
+		</inlet>
+	</inletlist>
+	<!--OUTLETS-->
+	<outletlist>
+		<outlet id="0" type="OUTLET_TYPE">
+			<digest>
+				texture output
+			</digest>
+			<description>
+				TEXT_HERE
+			</description>
+		</outlet>
+		<outlet id="1" type="OUTLET_TYPE">
+			<digest>
+				dumpout
+			</digest>
+			<description>
+				TEXT_HERE
+			</description>
+		</outlet>
+	</outletlist>
+	<!--OB3D-->
+	<OB3D/>
+	<!--MESSAGES-->
+	<methodlist>
+		<method name="dispose">
+			<arglist/>
+			<digest>
+				Close the currently loaded movie
+			</digest>
+			<description/>
+		</method>
+		<method name="clear_looppoints">
+			<arglist/>
+			<digest>
+				Clear the current loop points
+			</digest>
+			<description/>
+		</method>
+		<method name="frame">
+			<arglist>
+				<arg name="frame-number" type="int"/>
+			</arglist>
+			<digest>
+				Jump to a frame number
+			</digest>
+			<description/>
+		</method>
+		<method name="jump">
+			<arglist>
+				<arg name="frame-offset" type="int"/>
+			</arglist>
+			<digest>
+				Jump to a relative movie frame
+			</digest>
+			<description/>
+		</method>
+		<method name="read">
+			<arglist>
+				<arg name="src-name" optional="1" type="symbol"/>
+			</arglist>
+			<digest> Read a movie from a disk file or URL </digest>
+			<description>
+         Reads a movie from a disk file or URL. If no argument is
+        present, or if the symbol 
+        <m>dialog</m>
+         is used for the 
+        <i>src-name</i>
+         argument, a file selection dialog will be presented to choose a file.
+        <br/>
+         If 
+        <at>autostart</at>
+         is enabled, the movie will begin playing at once. 
+      </description>
+		</method>
+		<method name="sendoutput">
+			<arglist>
+				<arg name="name" optional="0" type="symbol"/>
+				<arg name="message" optional="0" type="symbol"/>
+				<arg name="values" optional="1" type="list"/>
+			</arglist>
+			<digest>Send the output texture a message</digest>
+		</method>
+		<method name="start">
+			<arglist/>
+			<digest> Start movie playback </digest>
+			<description>
+         Starts movie playback at the current 
+        <at>rate</at>
+         from the current QuickTime time value specified by 
+        <at>time</at>
+        . 
+      </description>
+		</method>
+		<method name="stop">
+			<arglist/>
+			<digest> Stop movie playback </digest>
+			<description>
+         Stops movie playback. 
+        <at>rate</at>
+         is unaffected). 
+      </description>
+		</method>
+	</methodlist>
+	<jittermethodlist>
+		<jittermethod name="bang"/>
+		<jittermethod name="draw"/>
+		<jittermethod name="drawimmediate"/>
+		<jittermethod name="drawraw"/>
+		<jittermethod name="exportattrs"/>
+		<jittermethod name="exportsummary"/>
+		<jittermethod name="getattributes"/>
+		<jittermethod name="getstate"/>
+		<jittermethod name="importattrs"/>
+		<jittermethod name="summary"/>
+	</jittermethodlist>
+	<!--ATTRIBUTES-->
+	<attributelist>
+		<attribute get="1" name="autostart" set="1" size="1" type="int">
+			<digest> Autoplay on movie open flag </digest>
+			<description> Autoplay on movie open flag (default = 1) </description>
+			<attributelist>
+				<attribute get="1" name="style" set="1" size="1" type="symbol" value="onoff"/>
+			</attributelist>
+		</attribute>
+		<attribute get="1" name="dim" set="1" size="2" type="int">
+			<digest> Native movie dimensions </digest>
+			<description> Native movie dimensions </description>
+		</attribute>
+		<attribute get="1" name="duration" set="0" size="1" type="int">
+			<digest> Movie duration in QuickTime time values </digest>
+			<description>
+         The movie duration, specified as QuickTime 
+        <at>time</at>
+         values. 
+      </description>
+		</attribute>
+		<attribute get="1" name="fps" set="0" size="1" type="float">
+			<digest> Internal FPS for the movie </digest>
+			<description>
+				The approximate calculation of the movie's internal FPS rate 
+			</description>
+		</attribute>
+		<attribute get="1" name="framecount" set="0" size="1" type="int">
+			<digest> Number of frames in the movie </digest>
+			<description> Number of frames in the movie </description>
+		</attribute>
+		<attribute get="1" name="framereport" set="1" size="1" type="int">
+			<digest> Frame number reporting flag </digest>
+			<description>
+         Frame reporting flag (default = 0). When enabled, the message 
+        <m>framereport</m>
+         will be sent from the rightmost outlet of the 
+        <o>jit.gl.hap</o>
+         object as each frame is processed, followed by the frame number.
+      </description>
+			<attributelist>
+				<attribute get="1" name="style" set="1" size="1" type="symbol" value="onoff"/>
+			</attributelist>
+		</attribute>
+		<attribute get="1" name="loop" set="1" size="1" type="int">
+			<digest>
+				Looping mode
+			</digest>
+			<description>
+				Looping mode (default = 1 (start to end)) 
+			</description>
+			<attributelist>
+				<attribute get="1" name="enumvals" set="1" size="4" type="atom">
+					<enumlist>
+						<enum name="off">
+							<digest>
+								no looping
+							</digest>
+							<description>
+								TEXT_HERE
+							</description>
+						</enum>
+						<enum name="normal">
+							<digest>
+								normal looping (start to end)
+							</digest>
+							<description>
+								TEXT_HERE
+							</description>
+						</enum>
+						<enum name="palindrome">
+							<digest>
+								palindrome looping (start to end to start to ....) 
+							</digest>
+							<description>
+								TEXT_HERE
+							</description>
+						</enum>
+						<enum name="playback-limits">
+							<digest>
+								no looping, but use looppoints to define playback limits
+							</digest>
+							<description>
+								TEXT_HERE
+							</description>
+						</enum>
+					</enumlist>
+				</attribute>
+				<attribute get="1" name="style" set="1" size="1" type="symbol" value="enumindex"/>
+			</attributelist>
+		</attribute>
+		<attribute get="1" name="loopend" set="1" size="1" type="int">
+			<digest> Loop point end for movie </digest>
+			<description>
+         The movie loop point end, specified as QuickTime 
+        <at>time</at>
+         values. 
+      </description>
+		</attribute>
+		<attribute get="1" name="looppoints" set="1" size="2" type="int">
+			<digest> Movie loop points </digest>
+			<description>
+         The movie loop points, specified as QuickTime 
+        <at>time</at>
+         values. 
+      </description>
+		</attribute>
+		<attribute get="1" name="loopreport" set="1" size="1" type="int">
+			<digest> Loop notification flag </digest>
+			<description>
+         Loop notification flag (default = 0). When enabled, the 
+        <o>jit.gl.hap</o>
+         object will send the message 
+        <m>loopnotify</m>
+         when the playing movie passes the loop point. In palindrome looping
+        mode, the message will be sent at both the beginning and the end of the
+        movie. 
+      </description>
+			<attributelist>
+				<attribute get="1" name="style" set="1" size="1" type="symbol" value="onoff"/>
+			</attributelist>
+		</attribute>
+		<attribute get="1" name="loopstart" set="1" size="1" type="int">
+			<digest> Loop point start for movie </digest>
+			<description>
+         The movie loop point start, specified as QuickTime 
+        <at>time</at>
+         values. 
+      </description>
+		</attribute>
+		<attribute get="1" name="out_name" set="0" size="1" type="symbol">
+			<digest>Output texture name</digest>
+			<description>Output texture name</description>
+		</attribute>
+		<attribute get="1" name="rate" set="1" size="1" type="float">
+			<digest> Movie rate </digest>
+			<description> Movie rate (default = 1.0) </description>
+		</attribute>
+		<attribute get="1" name="rate_preserves_pitch" set="1" size="1" type="int">
+			<digest>
+				Enable rate preserves pitch for movies with audio tracks.
+			</digest>
+			<description>
+				Enable rate preserves pitch for movies with audio tracks (default = 1). 
+				When enabled rate changes will not affect the pitch of the audio. Disabling
+				may improve performance when changing the movie rate.
+			</description>
+			<attributelist>
+				<attribute get="1" name="style" set="1" size="1" type="symbol" value="onoff"/>
+			</attributelist>
+		</attribute>
+		<attribute get="1" name="time" set="1" size="1" type="int">
+			<digest> Current time in the movie </digest>
+			<description>
+         The current time in the movie. Time is specified as QuickTime 
+        <at>time</at>
+         values. 
+      </description>
+		</attribute>
+		<attribute get="1" name="timescale" set="0" size="1" type="int">
+			<digest> Movie timescale </digest>
+			<description> The timescale for the movie, i.e., the number of time-values per second.</description>
+		</attribute>
+		<attribute get="1" name="vol" set="1" size="1" type="float">
+			<digest> Movie sound volume </digest>
+			<description> Movie sound volume (default = 1.0)</description>
+		</attribute>
+	</attributelist>
+	<jitterattributelist>
+		<jitterattribute name="axes"/>
+		<jitterattribute name="dest_dim"/>
+		<jitterattribute name="drawto"/>
+		<jitterattribute name="enable"/>
+		<jitterattribute name="inherit_all"/>
+		<jitterattribute name="inherit_color"/>
+		<jitterattribute name="inherit_depth"/>
+		<jitterattribute name="inherit_fog"/>
+		<jitterattribute name="inherit_material"/>
+		<jitterattribute name="inherit_poly"/>
+		<jitterattribute name="inherit_texture"/>
+		<jitterattribute name="inherit_transform"/>
+		<jitterattribute name="name"/>
+	</jitterattributelist>
+	<!--EXAMPLE-->
+	<examplelist>
+		<example img="jit.gl.hap.png"/>
+	</examplelist>
+	<!--SEEALSO-->
+	<seealsolist>
+		<seealso name="jit.qt.movie"/>
+		<seealso name="jit.gl.slab"/>
+		<seealso module="jitter" name="jitterappendixa" type="tutorial">Appendix A: QuickTime Confidential</seealso>
+	</seealsolist>
+</c74object>

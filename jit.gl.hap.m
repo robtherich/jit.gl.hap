@@ -1,4 +1,50 @@
-// jit.gl.hap.c
+/*
+ *  jit.gl.hap.c - A jitter external to provide native HAP playback
+ *	by Rob Ramirez, rob@robtherich.org 2013
+ *
+ **********************************************************
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * ----------------------
+ *
+ * Requires the max 6.1 (or later) SDK from cycling '74
+ * http://cycling74.com/products/sdk/
+ * The SDK folder is assumed to be at the same level as the jit.gl.hap project folder.
+ * This can be changed by editing the included maxmspsdk.xconfig file.
+ *
+ * Based on the Hap Quicktime Playback Demo
+ * https://github.com/vidvox/hap-quicktime-playback-demo
+ *
+ * Credit due to Brian Chasalow, for the Texture to FBO functionality found in jit.bc.qtkit
+ * https://github.com/brianchasalow/jit.BC.QTKit
+ *
+ * Many thanks to Tom Butterworth and Vidvox for the HAP project!
+ * http://vdmx.vidvox.net/blog/hap
+ */
+
+
+#include "ext.h"
+#ifndef C74_X64
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -155,10 +201,10 @@ t_jit_err jit_gl_hap_init(void)
 	
 	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_USURP_LOW;
 	
-	attr = jit_object_new(_jit_sym_jit_attr_offset,"adapt",_jit_sym_char,attrflags,
-		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,adapt));
-	jit_class_addattr(_jit_gl_hap_class,attr);
-	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
+	//attr = jit_object_new(_jit_sym_jit_attr_offset,"adapt",_jit_sym_char,attrflags,
+	//	(method)0L,(method)0L,calcoffset(t_jit_gl_hap,adapt));
+	//jit_class_addattr(_jit_gl_hap_class,attr);
+	//object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
 	
 	attr = jit_object_new(_jit_sym_jit_attr_offset_array,"dim",_jit_sym_long,2,attrflags,
 		(method)0L,(method)0L,0,calcoffset(t_jit_gl_hap,dim));
@@ -275,7 +321,6 @@ t_jit_err jit_gl_hap_init(void)
 t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 {
 	t_jit_gl_hap *x;
-	t_atom av[4];
 	
 	if (x = (t_jit_gl_hap *)jit_object_alloc(_jit_gl_hap_class)) {
 		jit_ob3d_new(x, dest_name);
@@ -322,13 +367,6 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->looppoints[0] = x->looppoints[1] = -1;
 		x->loopreport = 0;
 		x->framereport = 0;
-		
-		// set color to white
-		jit_atom_setfloat(av,1.);
-		jit_atom_setfloat(av+1,1.);
-		jit_atom_setfloat(av+2,1.);
-		jit_atom_setfloat(av+3,1.);
-		jit_object_method(x,gensym("color"),4,av);		
 	}
 	else {
 		x = NULL;
@@ -1165,3 +1203,5 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 		}
 	}
 }
+
+#endif
