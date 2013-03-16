@@ -104,6 +104,7 @@ typedef struct _jit_gl_hap
 	GLenum				newInternalFormat;
 	GLsizei				newDataLength;
 	GLenum				target;
+	GLuint				fboid;
 } t_jit_gl_hap;
 
 void *_jit_gl_hap_class;
@@ -154,8 +155,6 @@ static t_symbol *ps_width;
 static t_symbol *ps_height;
 static t_symbol *ps_glid;
 static t_symbol *ps_draw;
-
-static GLuint tempFBO = 0;
 
 // --------------------------------------------------------------------------------
 
@@ -349,6 +348,8 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->internalFormat = x->newInternalFormat = 0;
 		x->newDataLength = 0;
 		x->target = 0;
+		x->fboid = 0;
+		
 		x->direction = 1;
 		x->suppress_loopnotify=0;
 		x->userloop = 0;
@@ -376,6 +377,9 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 
 void jit_gl_hap_free(t_jit_gl_hap *x)
 {
+	if(x->fboid)
+		glDeleteFramebuffers(1, &x->fboid);
+	
 	if(x->texoutput) {
 		jit_object_free(x->texoutput);
 	}
@@ -502,9 +506,9 @@ t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
 	if(x->texoutput)
 		jit_attr_setsym(x->texoutput, gensym("drawto"), dest_name);
 		
-	if(tempFBO != 0) {
-		glDeleteFramebuffers(1, &tempFBO);
-		tempFBO = 0;
+	if(x->fboid != 0) {
+		glDeleteFramebuffers(1, &x->fboid);
+		x->fboid = 0;
 	}
 	
 	// our texture has to be bound in the new context before we can use it
@@ -575,12 +579,10 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		GLint previousFBO;	// make sure we pop out to the right FBO
 		GLint previousReadFBO;
 		GLint previousDrawFBO;
-		GLint previousMatrixMode;
 		
 		glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
 		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
 		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
-		glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
 				
 		// We are going to bind our FBO to our internal jit.gl.texture as COLOR_0 attachment
 		// We need the ID, width/height.
@@ -636,9 +638,9 @@ t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint
 	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
 
 	// FBO generation/attachment to texture
-	if(tempFBO == 0)
-		glGenFramebuffers(1, &tempFBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, tempFBO);
+	if(x->fboid == 0)
+		glGenFramebuffers(1, &x->fboid);
+	glBindFramebuffer(GL_FRAMEBUFFER, x->fboid);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE_ARB, texid, 0);
 	
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -706,6 +708,7 @@ void jit_gl_hap_dodraw(t_jit_gl_hap *x, GLuint width, GLuint height)
 	glEnable(x->target);
 	glBindTexture(x->target,x->texture);
 	
+	glClientActiveTextureARB(GL_TEXTURE0_ARB);
 	glEnableClientState( GL_TEXTURE_COORD_ARRAY );
 	glTexCoordPointer(2, GL_FLOAT, 0, tex_coords );
 	glEnableClientState(GL_VERTEX_ARRAY);		
@@ -723,8 +726,10 @@ void jit_gl_hap_dodraw(t_jit_gl_hap *x, GLuint width, GLuint height)
 void jit_gl_hap_draw_end(t_jit_gl_hap *x)
 {
 	glBindTexture(x->target,0);
+	glDisable(x->target);
 	
 	glDisableClientState(GL_VERTEX_ARRAY);
+	glClientActiveTextureARB(GL_TEXTURE0_ARB);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	
 	glMatrixMode(GL_MODELVIEW);
