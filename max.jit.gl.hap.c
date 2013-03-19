@@ -56,7 +56,8 @@ int C74_EXPORT main(void)
     class_addmethod(maxclass, (method)max_jit_gl_hap_assist, "assist", A_CANT, 0);
 
 	// add methods for 3d drawing
-    max_jit_class_ob3d_wrap(maxclass);
+    //max_jit_class_ob3d_wrap(maxclass);
+	max_ob3d_setup();
 	
 	// override the default ob3d notify with our own. must come after max_jit_class_ob3d_wrap
 	class_addmethod(maxclass, (method)max_jit_gl_hap_notify, "notify", A_CANT, 0);
