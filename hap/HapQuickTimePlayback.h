@@ -33,6 +33,7 @@
 
 #include "ext.h"
 #ifndef C74_X64
+#ifdef MAC_VERSION
 
 #import <Cocoa/Cocoa.h>
 #import <QTKit/QTKit.h>
@@ -68,4 +69,5 @@ void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 
 @end
 
+#endif
 #endif

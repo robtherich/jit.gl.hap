@@ -33,8 +33,27 @@
 #include "ext.h"
 #ifndef C74_X64
 
+#ifdef MAC_VERSION
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuickTime/QuickTime.h>
+
+#else
+#include "jit.common.h"
+
+#include <Movies.h>
+#include <QuickTimeVR.h>
+#include <QuickTimeVRFormat.h>
+#include <GXMath.h>
+#include <MediaHandlers.h>
+#include <Script.h>
+#include <Resources.h>
+#include <MacWindows.h>
+#include <QuickDraw.h>
+#include <QD3DViewer.h>
+#include <ImageCodec.h>
+
+#include "jit.qt.h"
+#endif
 
 /**
  The four-character-codes used to describe the pixel-formats of DXT frames emitted by the Hap QuickTime codec.

@@ -31,7 +31,9 @@
 
 #ifndef C74_X64
 
+#ifdef MAC_VERSION
 #import <QuickTime/QuickTime.h>
+#endif
 
 /*
  These are the four-character-codes used to designate the three Hap codecs
@@ -77,10 +79,11 @@ Boolean HapQTQuickTimeMovieHasHapTrackPlayable(Movie movie)
             GetMediaHandlerDescription(media, &mediaType, NULL, NULL);
             if (mediaType == VideoMediaType)
             {
+				OSType codecType;
                 // Get the codec-type of this track
                 ImageDescriptionHandle imageDescription = (ImageDescriptionHandle)NewHandle(0); // GetMediaSampleDescription will resize it
                 GetMediaSampleDescription(media, 1, (SampleDescriptionHandle)imageDescription);
-                OSType codecType = (*imageDescription)->cType;
+                codecType = (*imageDescription)->cType;
                 DisposeHandle((Handle)imageDescription);
                 
                 switch (codecType) {
@@ -125,7 +128,7 @@ static void HapQTRegisterDXTPixelFormat(OSType fmt, short bits_per_pixel, SInt32
                                                             0,
                                                             &kCFTypeDictionaryKeyCallBacks,
                                                             &kCFTypeDictionaryValueCallBacks);
-    bzero(&pixelInfo, sizeof(pixelInfo));
+    memset(&pixelInfo, 0, sizeof(pixelInfo));
     pixelInfo.size  = sizeof(ICMPixelFormatInfo);
     pixelInfo.formatFlags = (has_alpha ? kICMPixelFormatHasAlphaChannel : 0);
     pixelInfo.bitsPerPixel[0] = bits_per_pixel;
@@ -168,33 +171,36 @@ static void HapQTRegisterPixelFormats(void)
 
 CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary()
 {
+	CFDictionaryRef dictionary;
     // The pixel formats must be registered before requesting them for a QTPixelBufferContext.
     // The codec does this but it is possible it may not be loaded yet.
     HapQTRegisterPixelFormats();
+	{
+		// The pixel formats we want. These are registered by the Hap codec.
+		SInt32 rgb_dxt1 = kHapPixelFormatTypeRGB_DXT1;
+		SInt32 rgba_dxt5 = kHapPixelFormatTypeRGBA_DXT5;
+		SInt32 ycocg_dxt5 = kHapPixelFormatTypeYCoCg_DXT5;
     
-    // The pixel formats we want. These are registered by the Hap codec.
-    SInt32 rgb_dxt1 = kHapPixelFormatTypeRGB_DXT1;
-    SInt32 rgba_dxt5 = kHapPixelFormatTypeRGBA_DXT5;
-    SInt32 ycocg_dxt5 = kHapPixelFormatTypeYCoCg_DXT5;
+		const void *formatNumbers[3] = {
+			CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &rgb_dxt1),
+			CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &rgba_dxt5),
+			CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &ycocg_dxt5)
+		};
     
-    const void *formatNumbers[3] = {
-        CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &rgb_dxt1),
-        CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &rgba_dxt5),
-        CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &ycocg_dxt5)
-    };
+		CFArrayRef formats = CFArrayCreate(kCFAllocatorDefault, formatNumbers, 3, &kCFTypeArrayCallBacks);
     
-    CFArrayRef formats = CFArrayCreate(kCFAllocatorDefault, formatNumbers, 3, &kCFTypeArrayCallBacks);
+		CFRelease(formatNumbers[0]);
+		CFRelease(formatNumbers[1]);
+		CFRelease(formatNumbers[2]);
     
-    CFRelease(formatNumbers[0]);
-    CFRelease(formatNumbers[1]);
-    CFRelease(formatNumbers[2]);
+		{
+			const void *keys[1] = { kCVPixelBufferPixelFormatTypeKey };
+			const void *values[1] = { formats };
     
-    const void *keys[1] = { kCVPixelBufferPixelFormatTypeKey };
-    const void *values[1] = { formats };
-    
-    CFDictionaryRef dictionary = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    
-    CFRelease(formats);
+			dictionary = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+		}
+		CFRelease(formats);
+	}
     
     return dictionary;
 }

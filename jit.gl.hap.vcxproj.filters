@@ -5,6 +5,10 @@
     <ClCompile Include="$(ProjectName).c" />
     <ClCompile Include="max.$(ProjectName).c" />
     <ClCompile Include="$(C74SUPPORT)\max-includes\common\commonsyms.c" />
+    <ClCompile Include="hap\HapSupport.c">
+      <Filter>hap</Filter>
+    </ClCompile>
+    <ClCompile Include="jit.gl.hap.glsl.c" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="hap">
@@ -18,5 +22,6 @@
     <ClInclude Include="hap\HapSupport.h">
       <Filter>hap</Filter>
     </ClInclude>
+    <ClInclude Include="jit.gl.hap.glsl.h" />
   </ItemGroup>
 </Project>
