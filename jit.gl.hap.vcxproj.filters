@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="$(C74SUPPORT)\max-includes\common\dllmain_win.c" />
+    <ClCompile Include="$(ProjectName).c" />
+    <ClCompile Include="max.$(ProjectName).c" />
+    <ClCompile Include="$(C74SUPPORT)\max-includes\common\commonsyms.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="hap">
+      <UniqueIdentifier>{3f1822cc-e1f4-4f5e-986d-a4c731c6bb87}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="hap\HapQuickTimePlayback.h">
+      <Filter>hap</Filter>
+    </ClInclude>
+    <ClInclude Include="hap\HapSupport.h">
+      <Filter>hap</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

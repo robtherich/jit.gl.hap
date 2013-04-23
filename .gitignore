@@ -27,3 +27,6 @@ __*
 enc_temp_folder
 build.sh
 .DS_Store
+*.opensdf
+*.sln
+*.ipch
