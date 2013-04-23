@@ -19,7 +19,7 @@
 		D435282016E6BD7F00DC2BC0 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D435281F16E6BD7F00DC2BC0 /* QTKit.framework */; };
 		D480C59216E6C2830023321E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D480C59116E6C2830023321E /* Cocoa.framework */; };
 		D480C5C016E957AF0023321E /* HapSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = D480C5BE16E957AF0023321E /* HapSupport.h */; };
-		D480C5C116E957AF0023321E /* HapSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D480C5BF16E957AF0023321E /* HapSupport.m */; };
+		D480C5C116E957AF0023321E /* HapSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5BF16E957AF0023321E /* HapSupport.c */; };
 		D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */; };
 /* End PBXBuildFile section */
 
@@ -38,7 +38,7 @@
 		D435281F16E6BD7F00DC2BC0 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = /System/Library/Frameworks/QTKit.framework; sourceTree = "<absolute>"; };
 		D480C59116E6C2830023321E /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = ../../../../../../../../System/Library/Frameworks/Cocoa.framework; sourceTree = "<group>"; };
 		D480C5BE16E957AF0023321E /* HapSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HapSupport.h; sourceTree = "<group>"; };
-		D480C5BF16E957AF0023321E /* HapSupport.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HapSupport.m; sourceTree = "<group>"; };
+		D480C5BF16E957AF0023321E /* HapSupport.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HapSupport.c; sourceTree = "<group>"; };
 		D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.glsl.c; sourceTree = "<group>"; };
 		D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.glsl.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -108,7 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				D480C5BE16E957AF0023321E /* HapSupport.h */,
-				D480C5BF16E957AF0023321E /* HapSupport.m */,
+				D480C5BF16E957AF0023321E /* HapSupport.c */,
 				D435280816E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch */,
 				D435280B16E6B99B00DC2BC0 /* HapQuickTimePlayback.h */,
 				D435280C16E6B99B00DC2BC0 /* HapQuickTimePlayback.m */,
@@ -203,7 +203,7 @@
 				2282B5AB10D90CE800D827D3 /* jit.gl.hap.m in Sources */,
 				2282B5AD10D90CF000D827D3 /* max.jit.gl.hap.c in Sources */,
 				D435281616E6B99B00DC2BC0 /* HapQuickTimePlayback.m in Sources */,
-				D480C5C116E957AF0023321E /* HapSupport.m in Sources */,
+				D480C5C116E957AF0023321E /* HapSupport.c in Sources */,
 				D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -236,7 +236,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = ./hap/Hap_QuickTime_Playback_Prefix.pch;
-				ONLY_ACTIVE_ARCH = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "$(C74_SYM_LINKER_FLAGS)";
 			};
 			name = Development;
@@ -253,7 +253,7 @@
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = ./hap/Hap_QuickTime_Playback_Prefix.pch;
-				ONLY_ACTIVE_ARCH = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "$(C74_SYM_LINKER_FLAGS)";
 			};
 			name = Deployment;

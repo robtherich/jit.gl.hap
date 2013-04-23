@@ -13,10 +13,6 @@
  notice, this list of conditions and the following disclaimer in the
  documentation and/or other materials provided with the distribution.
  
- * Neither the name of Hap nor the name of its contributors
- may be used to endorse or promote products derived from this software
- without specific prior written permission.
- 
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -27,18 +23,19 @@
  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- Modified by Rob Ramirez for jit.gl.hap Max 6 external, 2013
  */
 
 #ifndef QTMultiGPUTextureIssue_HapSupport_h
 #define QTMultiGPUTextureIssue_HapSupport_h
 
-#include "ext.h"
-#ifndef C74_X64
+#import <CoreFoundation/CoreFoundation.h>
+#import <QuickTime/QuickTime.h>
 
-#import <Foundation/Foundation.h>
-#import <QTKit/QTKit.h>
+#if __LP64__
+
+#error Hap QuickTime support requires 32-bit QuickTime APIs but this target is 64-bit
+
+#else
 
 /**
  The four-character-codes used to describe the pixel-formats of DXT frames emitted by the Hap QuickTime codec.
@@ -48,9 +45,16 @@
 #define kHapPixelFormatTypeYCoCg_DXT5 'DYt5'
 
 /**
+ Returns true if any track of movie is a Hap track and the codec is installed to handle it, otherwise false.
+ */
+Boolean HapQTQuickTimeMovieHasHapTrackPlayable(Movie movie);
+
+#ifdef __OBJC__
+/**
  Returns YES if any track of movie is a Hap track and the codec is installed to handle it, otherwise NO.
  */
-BOOL HapQTMovieHasHapTrackPlayable(QTMovie *movie);
+#define HapQTMovieHasHapTrackPlayable(m) ((BOOL)HapQTQuickTimeMovieHasHapTrackPlayable([(m) quickTimeMovie]))
+#endif
 
 /**
  Returns a dictionary suitable to pass with the kQTVisualContextPixelBufferAttributesKey in an options dictionary when
@@ -58,6 +62,6 @@ BOOL HapQTMovieHasHapTrackPlayable(QTMovie *movie);
  */
 CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary();
 
-#endif 
+#endif
 
 #endif
