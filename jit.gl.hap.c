@@ -48,9 +48,9 @@
 
 #include "jit.common.h"
 #include "jit.gl.h"
+#include "jit.fixmath.h"
 
-/* ------------------------ GL_EXT_framebuffer_blit ------------------------ */
-
+/*
 #ifndef GL_EXT_framebuffer_blit
 #define GL_EXT_framebuffer_blit 1
 
@@ -65,15 +65,43 @@
 
 //#define GLEW_EXT_framebuffer_blit GLEW_GET_VAR(__GLEW_EXT_framebuffer_blit)
 
-#endif /* GL_EXT_framebuffer_blit */
+#endif // GL_EXT_framebuffer_blit
+*/
 
-//#include "HapQuickTimePlayback.h"
+#include "HapSupport.h"
 #include "jit.gl.hap.glsl.h"
 
 #define JIT_GL_HAP_LOOP_OFF			0
 #define JIT_GL_HAP_LOOP_ON			1
 #define JIT_GL_HAP_LOOP_PALINDROME	2
 #define JIT_GL_HAP_LOOP_LIMITS		3
+
+#define     kCharacteristicHasVideoFrameRate    FOUR_CHAR_CODE('vfrr')
+
+#define XQT_NewDataReferenceFromMaxPath(path,name,ref,reftype,err) \
+{ \
+CFStringRef cfs; \
+char tmpname[MAX_PATH_CHARS]; \
+char pathname[MAX_PATH_CHARS]; \
+(*(err)) = -1; \
+(*(ref)) = NULL; \
+if (!path_topotentialname(path,name,tmpname,FALSE)) { \
+	if (!path_nameconform(tmpname,pathname,PATH_STYLE_NATIVE,PATH_TYPE_PATH)) { \
+		cfs = CFStringCreateWithCString(kCFAllocatorDefault,pathname,kCFStringEncodingUTF8);\
+		if (cfs) { \
+			(*(err)) = QTNewDataReferenceFromFullPathCFString(cfs,kQTWindowsPathStyle,0,ref,reftype); \
+			if (*(err)) (*(ref))=NULL; \
+			CFRelease(cfs); \
+		} \
+	} \
+} \
+}
+
+EXTERN_API_C( OSStatus )
+QTPixelBufferContextCreate(
+  CFAllocatorRef        allocator,                   /* can be NULL */
+  CFDictionaryRef       attributes,                  /* can be NULL */
+  QTVisualContextRef *  newPixelBufferContext);
 
 typedef struct _jit_gl_hap
 {
@@ -85,8 +113,11 @@ typedef struct _jit_gl_hap
 	void					*hapglsl;	// shader for hap conversion
 	//float					rect[4];	// output rectangle (MIN XY, MAX XY)
 	t_atom_long				dim[2];		// output dim
-	void					*hap;
 	
+	Movie					movie;
+	QTVisualContextRef      visualContext;
+	CVImageBufferRef		currentImage;
+
 	char				drawhap;
 	char				useshader;
 	char				newfile;
@@ -104,6 +135,7 @@ typedef struct _jit_gl_hap
 	t_atom_long			framecount;
 	t_atom_long			timescale;
 	char				loop;
+	long				loopflags;
 	char				autostart;
 	float				rate;
 	float				vol;
@@ -112,7 +144,7 @@ typedef struct _jit_gl_hap
 	char				loopreport;
 	char				framereport;
 	
-	void				*buffer;
+	CVPixelBufferRef	buffer;
 	GLuint          	texture;
     GLuint				backingHeight;
     GLuint				backingWidth;
@@ -137,6 +169,7 @@ void jit_gl_hap_dispose(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x);
+t_bool jit_gl_hap_getcurrentframe(t_jit_gl_hap *x);
 t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint height);
 void jit_gl_hap_dodraw(t_jit_gl_hap *x, GLuint width, GLuint height);
 void jit_gl_hap_draw_end(t_jit_gl_hap *x);
@@ -166,6 +199,8 @@ t_jit_err jit_gl_hap_looppoints(t_jit_gl_hap *x, void *attr, long ac, t_atom *av
 // texture
 void jit_gl_hap_sendoutput(t_jit_gl_hap *x, t_symbol *s, int argc, t_atom *argv);
 t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av);
+
+void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 
 static t_symbol *ps_bind;
 static t_symbol *ps_unbind;
@@ -342,8 +377,13 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 	if (x = (t_jit_gl_hap *)jit_object_alloc(_jit_gl_hap_class)) {
 		jit_ob3d_new(x, dest_name);
 
-		x->hap = NULL;
-		
+		InitializeQTML(0);                          // Initialize QTML 
+        EnterMovies();                              // Initialize QuickTime 
+
+		x->movie = NULL;
+		x->visualContext = NULL;
+		x->currentImage = NULL;
+
 		x->file = _jit_sym_nothing;
 		x->texoutput = jit_object_new(gensym("jit_gl_texture"), dest_name);
 		jit_attr_setsym(x->texoutput,gensym("defaultimage"),gensym("black"));
@@ -377,6 +417,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->timescale = 0;
 		x->framecount = 0;
 		x->loop = JIT_GL_HAP_LOOP_ON;
+		x->loopflags = 0;
 		x->autostart = 1;
 		x->rate = 1;
 		x->vol = 1;
@@ -403,9 +444,15 @@ void jit_gl_hap_free(t_jit_gl_hap *x)
 		jit_object_free(x->hapglsl);
 	}
 	
-	//[x->hap disposeContext];
-	//[x->hap disposeMovie];
-	//[x->hap release];
+	jit_gl_hap_dispose(x);
+
+	if(x->visualContext) {		
+		QTVisualContextRelease(x->visualContext);
+		x->visualContext = NULL;
+	}
+
+	ExitMovies();                               // Terminate QuickTime 
+	TerminateQTML();                            // Terminate QTML 
 	
 	jit_ob3d_free(x);
 }
@@ -432,7 +479,7 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 {
 	t_atom a[2];
 	x->newfile = 0;
-	if (x->hap) {
+	if (1) {
 		char fname[MAX_FILENAME_CHARS] = "";
 		short vol;
 		t_fourcc type;
@@ -444,44 +491,61 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 		} else {
 			ret = open_dialog(fname, &vol, &type, NULL, 0); // limit to movie files?
 		}
-		/*
+
 		if (!ret) {
 			char fpath[MAX_PATH_CHARS];
 			char cpath[MAX_PATH_CHARS];
-			
+			Handle		dataRef;
+			OSType		dataRefType;
+			OSErr		err;
+			short		resid;
+
 			path_topathname(vol, fname, fpath);
 			path_nameconform(fpath, cpath, PATH_STYLE_SLASH, PATH_TYPE_BOOT);
 			x->file = gensym(cpath);
-			if(![x->hap read:(const char *)x->file->s_name rcp:x->rate_preserves_pitch]) {
-				if([x->hap lasterror]) {
-					NSString * description = [[x->hap lasterror] localizedDescription];
-					jit_object_error((t_object*)x, "error loading quicktime movie: %s", [description UTF8String]);
-				}
-				else {
-					jit_object_error((t_object*)x, "unknown error loading quicktime movie");
-				}
+
+			XQT_NewDataReferenceFromMaxPath(vol, fname, &dataRef, &dataRefType, &err);
+			err = NewMovieFromDataRef(&x->movie, newMovieActive, &resid, dataRef, dataRefType);
+			if(err) {
+				jit_object_error((t_object*)x, "unknown error loading quicktime movie");
+				if(x->movie) 
+					DisposeMovie(x->movie);
 			}
 			else {
-				QTTime duration = [[x->hap movie] duration];
+				//MediaHandler mh = NULL;
+				Track	track = NULL;
+				Media	media = NULL;
+				SetMovieDefaultDataRef(x->movie, dataRef, dataRefType);
+				if (track = GetMovieIndTrackType(x->movie, 1, kCharacteristicHasVideoFrameRate, movieTrackCharacteristic)) {
+					if (media = GetTrackMedia(track)) {
+						//if (mh = GetMediaHandler(media)) {
+							//err = MediaHasCharacteristic(mh, kCharacteristicIsAnMpegTrack, &isMpeg);
+						//}
+					}
+				}				
 				x->newfile = 1;
-				x->fps = [x->hap frameRate];
-				x->framecount = [x->hap frameCount];
-				x->timescale = duration.timeScale;
-				x->duration = duration.timeValue;
+				MoviesTask(x->movie, 0);
+				x->framecount = GetMediaSampleCount(media);
+				x->timescale = GetMovieTimeScale(x->movie);
+				x->duration = GetMovieDuration(x->movie);
+				x->fps = (float)((double)x->framecount*(double)x->timescale/(double)x->duration);
+
 				jit_attr_user_touch(x, gensym("fps"));
 				jit_attr_user_touch(x, gensym("duration"));
 				jit_attr_user_touch(x, gensym("timescale"));
 				jit_attr_user_touch(x, gensym("framecount"));
 				
 				// if user didn't modify looppoints, reset them
-				if(!x->userloop) {
+				//if(!x->userloop) {
 					x->looppoints[0] = x->looppoints[1] = -1;
-				}
+				//}
 				// set attributes here
 				jit_gl_hap_do_loop(x);
 				// rate must init after playback starts
 			}
-		}*/
+			DisposeHandle(dataRef);
+			dataRef = NULL;
+		}
 	}
 	jit_atom_setsym(a, x->file);
 	jit_atom_setlong(a+1, x->newfile ? 1 : 0);	
@@ -490,8 +554,11 @@ void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 
 void jit_gl_hap_dispose(t_jit_gl_hap *x)
 {
-	if(x->hap){
-		//[x->hap disposeMovie];
+	if (x->movie) {
+		StopMovie(x->movie);
+		SetMovieVisualContext(x->movie, NULL);
+		DisposeMovie(x->movie);
+		x->movie = NULL;
 	}
 }
 
@@ -502,7 +569,10 @@ void jit_gl_hap_dispose(t_jit_gl_hap *x)
 t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
 {
 	if(x->movieloaded) {
-		//[x->hap disposeContext];
+		StopMovie(x->movie);
+		SetMovieVisualContext(x->movie, NULL);
+		QTVisualContextRelease(x->visualContext);
+		x->visualContext = NULL;
 		x->newfile = 1;
 	}
 	return JIT_ERR_NONE;
@@ -541,7 +611,8 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 {
 	t_jit_err result = JIT_ERR_NONE;
 	t_jit_gl_drawinfo drawinfo;
-	
+	OSStatus err=-1;
+
 	if(x->newfile) {
 		if(x->texture && x->deletetex) {
 			glDeleteTextures(1, &x->texture);
@@ -549,39 +620,49 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		}
 		
 		x->texture = 0;
+
+		// Check if the movie has a Hap video track
+		if (HapQTQuickTimeMovieHasHapTrackPlayable(x->movie)) {
+			CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
+		    const void* key = kQTVisualContextPixelBufferAttributesKey;
+			const void* value = pixelBufferOptions;
+			CFDictionaryRef visualContextOptions = CFDictionaryCreate(
+				kCFAllocatorDefault, &key, &value, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks
+			);
 		
-		/*if(![x->hap addMovieToContext]) {
+			CFRelease(pixelBufferOptions);
+			err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &x->visualContext);
+			CFRelease(visualContextOptions);
+		}
+		else {
+			//err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
+			jit_object_error((t_object*)x, "non-hap codec movies are unsupported at this time");
+			return JIT_ERR_GENERIC;
+		}
+	
+		if (err == noErr) {
+			err = SetMovieVisualContext(x->movie, x->visualContext);
+		}
+		if(err != noErr) {
 			jit_object_error((t_object*)x, "unknown error adding quicktime movie to context");
 			return JIT_ERR_GENERIC;
-		}*/
+		}
 		
 		x->movieloaded = 1;
-		/*
-		@try {
-			[[x->hap movie] play];
-		}
-		@catch (NSException * e) {
-			jit_object_error((t_object*)x, "error playing movie: %s %s", [[e name]UTF8String], [[e reason]UTF8String]);
-			[x->hap disposeMovie];
-			x->movieloaded = 0;
-		}
-		@finally {
-			x->newfile = 0;
-			if(x->movieloaded) {
-				[[x->hap movie] setRate:x->rate];
-				[[x->hap movie] setVolume:x->vol];
-				jit_gl_hap_do_looppoints(x);
-				jit_attr_user_touch(x, gensym("loopstart"));
-				jit_attr_user_touch(x, gensym("loopend"));
-				jit_attr_user_touch(x, gensym("looppoints"));
+		x->newfile = 0;
+		StartMovie(x->movie);
+		SetMovieRate(x->movie, DoubleToFixed(x->rate));
+		SetMovieVolume(x->movie, x->vol*255.);
+		
+		jit_gl_hap_do_looppoints(x);
+		jit_attr_user_touch(x, gensym("loopstart"));
+		jit_attr_user_touch(x, gensym("loopend"));
+		jit_attr_user_touch(x, gensym("looppoints"));
 								
-				if(!x->autostart) {
-					[[x->hap movie] stop];
-					jit_gl_hap_do_set_time(x, 0);
-				}
-			}
+		if(!x->autostart) {
+			StopMovie(x->movie);
+			jit_gl_hap_do_set_time(x, 0);
 		}
-		*/
 	}
 	
 	if(!x->movieloaded)
@@ -590,7 +671,7 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 	if(jit_gl_drawinfo_setup(x,&drawinfo))
 		return JIT_ERR_GENERIC;
 		
-	//[x->hap getCurFrame];
+	jit_gl_hap_getcurrentframe(x);
 	
 	if(x->validframe) {
 
@@ -605,8 +686,8 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		GLuint height = jit_attr_getlong(x->texoutput,ps_height);
 
 		glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
-		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
-		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
+		//glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
+		//glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
 		
 		if(width!=x->dim[0] || height!=x->dim[1]) {
 			width = x->dim[0];
@@ -635,8 +716,8 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		glPopAttrib();
 		
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);	
-		glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, previousReadFBO);
-		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO);
+		//glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, previousReadFBO);
+		//glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO);
 
 		x->validframe = 0;
 		
@@ -644,9 +725,29 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		jit_gl_hap_do_report(x);
 	}
 	
-	//[x->hap releaseCurFrame];
-	
+    if (x->currentImage) {
+        CVBufferRelease(x->currentImage);
+		x->currentImage = NULL;
+	}
+    QTVisualContextTask(x->visualContext);
+	MoviesTask(x->movie, 0);
+
 	return result;
+}
+
+t_bool jit_gl_hap_getcurrentframe(t_jit_gl_hap *x)
+{
+    OSStatus err = noErr;
+    CVImageBufferRef image = NULL;
+    err = QTVisualContextCopyImageForTime(x->visualContext, nil, nil, &image);
+    
+    if (err == noErr && image) {
+		x->currentImage = image;
+		jit_gl_hap_draw_frame(x, image);
+    }
+    //else if (err != noErr) {
+      //  NSLog(@"err %hd at QTVisualContextCopyImageForTime(), %s", err, __func__);
+    //}
 }
 
 t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint height)
@@ -763,7 +864,7 @@ void jit_gl_hap_draw_end(t_jit_gl_hap *x)
 
 void jit_gl_hap_submit_texture(t_jit_gl_hap *x)
 {						
-	GLvoid *baseAddress = NULL;//CVPixelBufferGetBaseAddress(x->buffer);
+	GLvoid *baseAddress = CVPixelBufferGetBaseAddress(x->buffer);
 	
 	glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
 	glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
@@ -794,10 +895,10 @@ void jit_gl_hap_submit_texture(t_jit_gl_hap *x)
 		glTexParameteri(x->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(x->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(x->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(x->target, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_SHARED_APPLE);
+		//glTexParameteri(x->target, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_SHARED_APPLE);
 		
 		// We allocate the texture with no pixel data, then use CompressedTexSubImage to update the content region			
-		glTexImage2D(x->target, 0, x->newInternalFormat, x->backingWidth, x->backingHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);        
+		glTexImage2D(x->target, 0, x->newInternalFormat, x->backingWidth, x->backingHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);        
 		
 		x->internalFormat = x->newInternalFormat;
 	}
@@ -806,7 +907,8 @@ void jit_gl_hap_submit_texture(t_jit_gl_hap *x)
 	}
 
 	//glTextureRangeAPPLE(GL_TEXTURE_2D, x->newDataLength, baseAddress);
-	glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
+	//glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	glCompressedTexSubImage2D(GL_TEXTURE_2D,
 							  0,
@@ -830,15 +932,15 @@ void jit_gl_hap_submit_texture(t_jit_gl_hap *x)
 void jit_gl_hap_start(t_jit_gl_hap *x)
 {
 	if(x->movieloaded) {
-		//[[x->hap movie] play];
-		//[[x->hap movie] setRate:x->rate];
+		StartMovie(x->movie);
+		SetMovieRate(x->movie, DoubleToFixed(x->rate));
 	}
 }
 
 void jit_gl_hap_stop(t_jit_gl_hap *x)
 {
 	if(x->movieloaded) {
-		//[[x->hap movie] stop];
+		StopMovie(x->movie);
 	}
 }
 
@@ -876,9 +978,8 @@ t_jit_err jit_gl_hap_frame(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 t_jit_err jit_gl_hap_jump(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
 {
 	if (x->movieloaded) {
-		//QTTime time = [[x->hap movie] currentTime];
-		//t_atom_long jump = jit_gl_hap_frametotime(x, jit_atom_getlong(av));
-		//jit_gl_hap_do_set_time(x, time.timeValue + jump);
+		t_atom_long jump = jit_gl_hap_frametotime(x, jit_atom_getlong(av));
+		jit_gl_hap_do_set_time(x, GetMovieTime(x->movie,NULL) + jump);
 	}
 	return JIT_ERR_NONE;
 }
@@ -976,18 +1077,25 @@ t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_a
 
 void jit_gl_hap_do_set_time(t_jit_gl_hap *x, t_atom_long time)
 {
-	/*if (x->movieloaded) {
+	if (x->movieloaded) {
+		TimeBase tb;
+		TimeRecord tr;
+		
 		if (x->loop == JIT_GL_HAP_LOOP_LIMITS)
 			CLIP_ASSIGN(time, x->looppoints[0], x->looppoints[1]);
-			
-		QTTime duration = [[x->hap movie] duration];
-		if (duration.timeValue) {
-			CLIP_ASSIGN(time, 0, duration.timeValue);
-			duration.timeValue = time;
-			[[x->hap movie] setCurrentTime: duration];
+
+		tb = GetMovieTimeBase(x->movie);
+		GetTimeBaseStartTime(tb, GetMovieTimeScale(x->movie), &tr); // fill out struct		
+		tr.value.lo = 0;
+		SetTimeBaseStartTime(tb, &tr);
+		tr.value.lo = GetMovieDuration(x->movie);
+
+		if (tr.value.lo) {
+			SetTimeBaseStopTime(tb, &tr);
+			SetMovieTimeValue(x->movie, time);		
 			x->suppress_loopnotify = 1;
 		}
-	}*/
+	}
 }
 
 t_jit_err jit_gl_hap_time_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av) 
@@ -1013,10 +1121,9 @@ t_jit_err jit_gl_hap_time_get(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av
 	}
 	jit_atom_setlong(*av,0);
 	
-	//if (x->movieloaded) {
-	//	QTTime time = [[x->hap movie] currentTime];
-	//	(*av)->a_w.w_long = (t_atom_long)(time.timeValue);
-	//}
+	if (x->movieloaded) {
+		(*av)->a_w.w_long = GetMovieTime(x->movie,NULL);
+	}
 	return JIT_ERR_NONE;
 }
 
@@ -1024,8 +1131,8 @@ t_jit_err jit_gl_hap_rate_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 {
 	if (ac && av)
 		x->rate = jit_atom_getfloat(av);
-	//if(x->movieloaded)
-		//[[x->hap movie] setRate:x->rate];
+	if(x->movieloaded)
+		SetMovieRate(x->movie, DoubleToFixed(x->rate));
 		
 	return JIT_ERR_NONE;
 }
@@ -1034,34 +1141,23 @@ t_jit_err jit_gl_hap_vol_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 {
 	if (ac && av)
 		x->vol = CLAMP(jit_atom_getfloat(av), 0, 1);
-	//if(x->movieloaded)
-		//[[x->hap movie] setVolume:x->vol];
+	if(x->movieloaded)
+		SetMovieVolume(x->movie, x->vol*255.);
 		
 	return JIT_ERR_NONE;
 }
 
 void jit_gl_hap_do_loop(t_jit_gl_hap *x)
 {
-	/*if(x->loop==JIT_GL_HAP_LOOP_OFF) {
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMoviePlaysSelectionOnlyAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsBackAndForthAttribute];
+	long flags = 0;
+	switch(x->loop) {
+		case JIT_GL_HAP_LOOP_ON: flags = loopTimeBase; break;
+		case JIT_GL_HAP_LOOP_PALINDROME: flags = palindromeLoopTimeBase; break;
+		case JIT_GL_HAP_LOOP_LIMITS:
+		case JIT_GL_HAP_LOOP_OFF:
+		default: flags = 0; break;
 	}
-	else if(x->loop==JIT_GL_HAP_LOOP_ON) {
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMoviePlaysSelectionOnlyAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsBackAndForthAttribute];
-	}
-	else if(x->loop==JIT_GL_HAP_LOOP_PALINDROME) {
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMoviePlaysSelectionOnlyAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMovieLoopsBackAndForthAttribute];
-	}
-	else if(x->loop==JIT_GL_HAP_LOOP_LIMITS) {
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:YES] forKey:QTMoviePlaysSelectionOnlyAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsAttribute];
-		[[x->hap movie] setAttribute:[NSNumber numberWithBool:NO] forKey:QTMovieLoopsBackAndForthAttribute];
-	}*/
+	x->loopflags = flags;
 }
 
 t_jit_err jit_gl_hap_loop_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
@@ -1077,9 +1173,11 @@ t_jit_err jit_gl_hap_loop_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 
 void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
 {
-	/*QTTime time = [[x->hap movie] duration];
-	QTTimeRange range;
-
+	TimeRecord tr;
+	TimeBase tb;
+	long start,end;
+	long ts;
+	
 	if(x->looppoints[1]<0)
 		x->looppoints[1] = x->duration;
 
@@ -1088,13 +1186,45 @@ void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
 	
 	CLIP_ASSIGN(x->looppoints[1], x->looppoints[0]+1, x->duration);
 	CLIP_ASSIGN(x->looppoints[0], 0, x->looppoints[1]-1);
-		
-	time.timeValue = x->looppoints[0];
-	range.time = time;
-	time.timeValue = x->looppoints[1]-x->looppoints[0];
-	range.duration = time;
+
+	start = x->looppoints[0];
+	end = x->looppoints[1];
+
+	tb = GetMovieTimeBase(x->movie);
+
+	SetMovieSelection(x->movie, 0, x->duration);
+	SetMovieActiveSegment(x->movie, 0, x->duration);
+	ts = GetMovieTimeScale(x->movie);
+	GetTimeBaseTime(tb, ts, &tr);
+	tr.value.lo = GetMovieTime(x->movie, NULL);
+	SetTimeBaseTime(tb, &tr);
 	
-	[[x->hap movie] setSelection:range];*/
+	// check loop duration
+	if (end - start < (ts * 0.001))
+		end = start + MAX(1, ts * 0.001);
+	
+	if (x->loop != JIT_GL_HAP_LOOP_OFF) {
+		SetTimeBaseFlags(tb,0);	
+		GetTimeBaseStartTime(tb, ts, &tr);
+		tr.value.lo = start;
+		SetTimeBaseStartTime(tb, &tr);
+		tr.value.lo = end;
+		SetTimeBaseStopTime(tb, &tr);
+		SetTimeBaseFlags(tb, x->loopflags);
+		if (x->loop == JIT_GL_HAP_LOOP_LIMITS) {
+			SetMovieSelection(x->movie, start, (end - start));
+			SetMovieActiveSegment(x->movie, start, (end - start));
+		}
+	} 
+	else {
+		SetTimeBaseFlags(tb,0);	
+		GetTimeBaseStartTime(tb, ts, &tr);
+		tr.value.lo = 0;
+		SetTimeBaseStartTime(tb, &tr);
+		tr.value.lo = x->duration;
+		SetTimeBaseStopTime(tb, &tr);
+		SetTimeBaseFlags(tb,x->loopflags);
+	}
 }
 
 t_jit_err jit_gl_hap_loopstart(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
@@ -1138,7 +1268,10 @@ t_jit_err jit_gl_hap_looppoints(t_jit_gl_hap *x, void *attr, long ac, t_atom *av
 #define kHapPixelFormatTypeRGBA_DXT5 'DXT5'
 #define kHapPixelFormatTypeYCoCg_DXT5 'DYt5'
 
-#define CVImageBufferRef void*
+enum CVPixelBufferLockFlags {
+	kCVPixelBufferLock_ReadOnly = 0x00000001,
+};
+
 void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 {
 	t_jit_gl_hap * x = (t_jit_gl_hap*)jitob;
@@ -1147,7 +1280,7 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 	if(x->validframe)
 		return;
 		
-	/*if (imageType == CVPixelBufferGetTypeID()) {
+	if (imageType == CVPixelBufferGetTypeID()) {
         
         // Update the texture
         CVBufferRetain(frame);
@@ -1165,6 +1298,10 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 
 		if(x->buffer) {
 			size_t extraRight, extraBottom;
+			OSType newPixelFormat;
+			unsigned int bitsPerPixel;
+			size_t bytesPerRow;
+			size_t actualBufferSize;
 
 			CVPixelBufferGetExtendedPixels(x->buffer, NULL, &extraRight, NULL, &extraBottom);
 			x->roundedWidth = x->dim[0] + extraRight;
@@ -1174,8 +1311,7 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 				return;
 			}
 			
-			OSType newPixelFormat = CVPixelBufferGetPixelFormatType(x->buffer);
-			unsigned int bitsPerPixel;
+			newPixelFormat = CVPixelBufferGetPixelFormatType(x->buffer);			
 
 			switch (newPixelFormat) {
 				case kHapPixelFormatTypeRGB_DXT1:
@@ -1195,9 +1331,9 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 			}
 			x->useshader = (newPixelFormat == kHapPixelFormatTypeYCoCg_DXT5);
 			
-			size_t bytesPerRow = (x->roundedWidth * bitsPerPixel) / 8;
+			bytesPerRow = (x->roundedWidth * bitsPerPixel) / 8;
 			x->newDataLength = bytesPerRow * x->roundedHeight; // usually not the full length of the buffer
-			size_t actualBufferSize = CVPixelBufferGetDataSize(x->buffer);
+			actualBufferSize = CVPixelBufferGetDataSize(x->buffer);
 			
 			// Check the buffer is as large as we expect it to be
 			if (x->newDataLength > actualBufferSize) {
@@ -1215,6 +1351,7 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 		}
     }
 	else {
+		/*
 		CGSize imageSize = CVImageBufferGetEncodedSize(frame);
 		x->texture = CVOpenGLTextureGetName(frame);
 		x->useshader = 0;
@@ -1226,6 +1363,7 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 			jit_attr_setlong(x->texoutput, gensym("flip"), 0);
 			x->drawhap = 0;
 		}
-	}*/
+		*/
+	}
 }
 #endif

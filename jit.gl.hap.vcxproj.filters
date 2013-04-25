@@ -16,9 +16,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="hap\HapQuickTimePlayback.h">
-      <Filter>hap</Filter>
-    </ClInclude>
     <ClInclude Include="hap\HapSupport.h">
       <Filter>hap</Filter>
     </ClInclude>

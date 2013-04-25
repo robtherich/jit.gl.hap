@@ -39,20 +39,9 @@
 
 #else
 #include "jit.common.h"
-
+#include <QTML.h>
 #include <Movies.h>
-#include <QuickTimeVR.h>
-#include <QuickTimeVRFormat.h>
-#include <GXMath.h>
-#include <MediaHandlers.h>
-#include <Script.h>
-#include <Resources.h>
-#include <MacWindows.h>
-#include <QuickDraw.h>
-#include <QD3DViewer.h>
-#include <ImageCodec.h>
-
-#include "jit.qt.h"
+//#include "jit.qt.h"
 #endif
 
 /**
