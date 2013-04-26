@@ -57,7 +57,6 @@ t_jit_err jit_gl_hap_init(void);
 t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name);
 void jit_gl_hap_free(t_jit_gl_hap *x);
 void jit_gl_hap_read(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
-void jit_gl_hap_dispose(t_jit_gl_hap *x);
 
 // ob3d
 t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x);
@@ -677,7 +676,8 @@ void jit_gl_hap_submit_texture(t_jit_gl_hap *x)
 	glTextureRangeAPPLE(GL_TEXTURE_2D, x->newDataLength, baseAddress);
 	glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
 #else
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+// not sure what this should be, so leaving as default for now
+//	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 #endif
 
 	glCompressedTexSubImage2D(GL_TEXTURE_2D,

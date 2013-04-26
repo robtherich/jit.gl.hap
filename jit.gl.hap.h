@@ -8,6 +8,11 @@
 
 #ifdef WIN_VERSION
 
+//#define GL_DRAW_FRAMEBUFFER_BINDING_EXT 0x8CA6
+//#define GL_READ_FRAMEBUFFER_EXT 0x8CA8
+//#define GL_DRAW_FRAMEBUFFER_EXT 0x8CA9
+//#define GL_READ_FRAMEBUFFER_BINDING_EXT 0x8CAA
+
 #define     kCharacteristicHasVideoFrameRate    FOUR_CHAR_CODE('vfrr')
 
 #define XQT_NewDataReferenceFromMaxPath(path,name,ref,reftype,err) \
@@ -112,6 +117,7 @@ void jit_gl_hap_new_native(t_jit_gl_hap *x);
 void jit_gl_hap_free_native(t_jit_gl_hap *x);
 void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname, short vol);
 t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x);
+void jit_gl_hap_dispose(t_jit_gl_hap *x);
 
 void jit_gl_hap_do_loop(t_jit_gl_hap *x);
 void jit_gl_hap_do_looppoints(t_jit_gl_hap *x);
