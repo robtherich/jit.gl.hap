@@ -20,7 +20,7 @@
 		D480C5C016E957AF0023321E /* HapSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = D480C5BE16E957AF0023321E /* HapSupport.h */; };
 		D480C5C116E957AF0023321E /* HapSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5BF16E957AF0023321E /* HapSupport.c */; };
 		D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */; };
-		D48FDDD2172A32D8009AB309 /* jit.gl.hap.native.mac.m in Sources */ = {isa = PBXBuildFile; fileRef = D48FDDD1172A32D8009AB309 /* jit.gl.hap.native.mac.m */; };
+		D48FDDD2172A32D8009AB309 /* jit.gl.hap.mac.m in Sources */ = {isa = PBXBuildFile; fileRef = D48FDDD1172A32D8009AB309 /* jit.gl.hap.mac.m */; };
 		D48FDDD5172A34D0009AB309 /* jit.gl.hap.c in Sources */ = {isa = PBXBuildFile; fileRef = D48FDDD4172A34D0009AB309 /* jit.gl.hap.c */; };
 /* End PBXBuildFile section */
 
@@ -41,10 +41,9 @@
 		D480C5BF16E957AF0023321E /* HapSupport.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HapSupport.c; sourceTree = "<group>"; };
 		D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.glsl.c; sourceTree = "<group>"; };
 		D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.glsl.h; sourceTree = "<group>"; };
-		D48FDDD0172A3297009AB309 /* jit.gl.hap.native.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.native.h; sourceTree = "<group>"; };
-		D48FDDD1172A32D8009AB309 /* jit.gl.hap.native.mac.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = jit.gl.hap.native.mac.m; sourceTree = "<group>"; };
-		D48FDDD3172A33E5009AB309 /* jit.gl.hap.native.win.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.native.win.c; sourceTree = "<group>"; };
+		D48FDDD1172A32D8009AB309 /* jit.gl.hap.mac.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = jit.gl.hap.mac.m; sourceTree = "<group>"; };
 		D48FDDD4172A34D0009AB309 /* jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.c; sourceTree = "<group>"; };
+		D48FDDD6172B0F88009AB309 /* jit.gl.hap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,13 +91,12 @@
 		08FB77ADFE841716C02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				D48FDDD6172B0F88009AB309 /* jit.gl.hap.h */,
 				D48FDDD4172A34D0009AB309 /* jit.gl.hap.c */,
 				2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */,
 				D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */,
 				D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */,
-				D48FDDD0172A3297009AB309 /* jit.gl.hap.native.h */,
-				D48FDDD1172A32D8009AB309 /* jit.gl.hap.native.mac.m */,
-				D48FDDD3172A33E5009AB309 /* jit.gl.hap.native.win.c */,
+				D48FDDD1172A32D8009AB309 /* jit.gl.hap.mac.m */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -211,7 +209,7 @@
 				D435281616E6B99B00DC2BC0 /* HapQuickTimePlayback.m in Sources */,
 				D480C5C116E957AF0023321E /* HapSupport.c in Sources */,
 				D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */,
-				D48FDDD2172A32D8009AB309 /* jit.gl.hap.native.mac.m in Sources */,
+				D48FDDD2172A32D8009AB309 /* jit.gl.hap.mac.m in Sources */,
 				D48FDDD5172A34D0009AB309 /* jit.gl.hap.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1,7 +1,6 @@
-#include <jit.gl.hap.native.h>
+#include "jit.gl.hap.h"
 
-
-#ifdef MAC_VERSION
+#if !defined(C74_X64) && defined(MAC_VERSION)
 
 void jit_gl_hap_new_native(t_jit_gl_hap *x)
 {
@@ -220,6 +219,5 @@ void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
 	
 	[[x->hap movie] setSelection:range];
 }
-
 
 #endif	// MAC_VERSION

@@ -16,6 +16,8 @@ void jit_gl_hap_new_native(t_jit_gl_hap *x)
 
 void jit_gl_hap_free_native(t_jit_gl_hap *x)
 {
+	jit_gl_hap_dispose(x);
+	
 	if(x->visualContext) {		
 		QTVisualContextRelease(x->visualContext);
 		x->visualContext = NULL;

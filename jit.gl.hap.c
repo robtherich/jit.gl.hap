@@ -330,7 +330,6 @@ void jit_gl_hap_free(t_jit_gl_hap *x)
 		jit_object_free(x->hapglsl);
 	}
 	
-	jit_gl_hap_dispose(x);
 	jit_gl_hap_free_native(x);
 	
 	jit_ob3d_free(x);
