@@ -48,24 +48,32 @@ void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname, short vol)
 			DisposeMovie(x->movie);
 	}
 	else {
-		//MediaHandler mh = NULL;
-		Track	track = NULL;
-		Media	media = NULL;
-		SetMovieDefaultDataRef(x->movie, dataRef, dataRefType);
-		if (track = GetMovieIndTrackType(x->movie, 1, kCharacteristicHasVideoFrameRate, movieTrackCharacteristic)) {
-			if (media = GetTrackMedia(track)) {
-				//if (mh = GetMediaHandler(media)) {
-					//err = MediaHasCharacteristic(mh, kCharacteristicIsAnMpegTrack, &isMpeg);
-				//}
-			}
-		}				
-		x->newfile = 1;
-		MoviesTask(x->movie, 0);
-		x->framecount = GetMediaSampleCount(media);
-		x->timescale = GetMovieTimeScale(x->movie);
-		x->duration = GetMovieDuration(x->movie);
-		x->fps = (float)((double)x->framecount*(double)x->timescale/(double)x->duration);
+		if(!HapQTQuickTimeMovieHasHapTrackPlayable(x->movie)) {
+			DisposeMovie(x->movie);
+			jit_object_error((t_object*)x, "non-hap codec movies are unsupported at this time");
+			goto out;
+		}
+		else {
+			//MediaHandler mh = NULL;
+			Track	track = NULL;
+			Media	media = NULL;
+			SetMovieDefaultDataRef(x->movie, dataRef, dataRefType);
+			if (track = GetMovieIndTrackType(x->movie, 1, kCharacteristicHasVideoFrameRate, movieTrackCharacteristic)) {
+				if (media = GetTrackMedia(track)) {
+					//if (mh = GetMediaHandler(media)) {
+						//err = MediaHasCharacteristic(mh, kCharacteristicIsAnMpegTrack, &isMpeg);
+					//}
+				}
+			}				
+			x->newfile = 1;
+			//MoviesTask(x->movie, 0);
+			x->framecount = GetMediaSampleCount(media);
+			x->timescale = GetMovieTimeScale(x->movie);
+			x->duration = GetMovieDuration(x->movie);
+			x->fps = (float)((double)x->framecount*(double)x->timescale/(double)x->duration);
+		}
 	}
+out:
 	DisposeHandle(dataRef);
 	dataRef = NULL;
 }
