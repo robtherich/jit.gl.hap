@@ -41,7 +41,6 @@
 #include "jit.common.h"
 #include <QTML.h>
 #include <Movies.h>
-//#include "jit.qt.h"
 #endif
 
 /**

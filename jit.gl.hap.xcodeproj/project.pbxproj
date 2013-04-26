@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		22301F4A10D7BC6C00C1989F /* JitterAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22301F4910D7BC6C00C1989F /* JitterAPI.framework */; };
-		2282B5AB10D90CE800D827D3 /* jit.gl.hap.m in Sources */ = {isa = PBXBuildFile; fileRef = 2282B5AA10D90CE800D827D3 /* jit.gl.hap.m */; };
 		2282B5AD10D90CF000D827D3 /* max.jit.gl.hap.c in Sources */ = {isa = PBXBuildFile; fileRef = 2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */; };
 		2282B5C510D90D3900D827D3 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2282B5C410D90D3900D827D3 /* OpenGL.framework */; };
 		D435281216E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D435280816E6B99B00DC2BC0 /* Hap_QuickTime_Playback_Prefix.pch */; };
@@ -21,11 +20,12 @@
 		D480C5C016E957AF0023321E /* HapSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = D480C5BE16E957AF0023321E /* HapSupport.h */; };
 		D480C5C116E957AF0023321E /* HapSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5BF16E957AF0023321E /* HapSupport.c */; };
 		D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */ = {isa = PBXBuildFile; fileRef = D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */; };
+		D48FDDD2172A32D8009AB309 /* jit.gl.hap.native.mac.m in Sources */ = {isa = PBXBuildFile; fileRef = D48FDDD1172A32D8009AB309 /* jit.gl.hap.native.mac.m */; };
+		D48FDDD5172A34D0009AB309 /* jit.gl.hap.c in Sources */ = {isa = PBXBuildFile; fileRef = D48FDDD4172A34D0009AB309 /* jit.gl.hap.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		22301F4910D7BC6C00C1989F /* JitterAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JitterAPI.framework; path = "../MaxSDK-6.1.1/c74support/jit-includes/JitterAPI.framework"; sourceTree = SOURCE_ROOT; };
-		2282B5AA10D90CE800D827D3 /* jit.gl.hap.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = jit.gl.hap.m; sourceTree = "<group>"; };
 		2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = max.jit.gl.hap.c; sourceTree = "<group>"; };
 		2282B5C410D90D3900D827D3 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
 		22CF10220EE984600054F513 /* maxmspsdk.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = maxmspsdk.xcconfig; sourceTree = SOURCE_ROOT; };
@@ -41,6 +41,10 @@
 		D480C5BF16E957AF0023321E /* HapSupport.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HapSupport.c; sourceTree = "<group>"; };
 		D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.glsl.c; sourceTree = "<group>"; };
 		D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.glsl.h; sourceTree = "<group>"; };
+		D48FDDD0172A3297009AB309 /* jit.gl.hap.native.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jit.gl.hap.native.h; sourceTree = "<group>"; };
+		D48FDDD1172A32D8009AB309 /* jit.gl.hap.native.mac.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = jit.gl.hap.native.mac.m; sourceTree = "<group>"; };
+		D48FDDD3172A33E5009AB309 /* jit.gl.hap.native.win.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.native.win.c; sourceTree = "<group>"; };
+		D48FDDD4172A34D0009AB309 /* jit.gl.hap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jit.gl.hap.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,10 +92,13 @@
 		08FB77ADFE841716C02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				2282B5AA10D90CE800D827D3 /* jit.gl.hap.m */,
+				D48FDDD4172A34D0009AB309 /* jit.gl.hap.c */,
 				2282B5AC10D90CF000D827D3 /* max.jit.gl.hap.c */,
 				D480C5C616E9607B0023321E /* jit.gl.hap.glsl.c */,
 				D480C5C816E9608D0023321E /* jit.gl.hap.glsl.h */,
+				D48FDDD0172A3297009AB309 /* jit.gl.hap.native.h */,
+				D48FDDD1172A32D8009AB309 /* jit.gl.hap.native.mac.m */,
+				D48FDDD3172A33E5009AB309 /* jit.gl.hap.native.win.c */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -200,11 +207,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2282B5AB10D90CE800D827D3 /* jit.gl.hap.m in Sources */,
 				2282B5AD10D90CF000D827D3 /* max.jit.gl.hap.c in Sources */,
 				D435281616E6B99B00DC2BC0 /* HapQuickTimePlayback.m in Sources */,
 				D480C5C116E957AF0023321E /* HapSupport.c in Sources */,
 				D480C5C716E9607B0023321E /* jit.gl.hap.glsl.c in Sources */,
+				D48FDDD2172A32D8009AB309 /* jit.gl.hap.native.mac.m in Sources */,
+				D48FDDD5172A34D0009AB309 /* jit.gl.hap.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
