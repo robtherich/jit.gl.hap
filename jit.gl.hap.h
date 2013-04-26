@@ -1,7 +1,9 @@
-#ifndef jit_gl_hap_jit_gl_hap_native_h
-#define jit_gl_hap_jit_gl_hap_native_h
+#ifndef __JIT_GL_HAP_H__
+#define __JIT_GL_HAP_H__
 
 #include "jit.common.h"
+#include "jit.gl.h"
+#include "jit.fixmath.h"
 #include "HapSupport.h"
 
 #ifdef WIN_VERSION
@@ -120,6 +122,7 @@ t_atom_long jit_gl_hap_frametotime(t_jit_gl_hap *x, t_atom_long frame);
 t_atom_long jit_gl_hap_timetoframe(t_jit_gl_hap *x, t_atom_long time);
 t_atom_long jit_gl_hap_do_get_time(t_jit_gl_hap *x);
 
-END_USING_C_LINKAGE
+void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
+void jit_gl_hap_releaseframe(t_jit_gl_hap *x);
 
 #endif

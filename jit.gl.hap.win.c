@@ -1,8 +1,10 @@
-#include <jit.gl.hap.native.h>
+#include "ext.h"
 
-#ifdef WIN_VERSION
+#if !defined(C74_X64) && defined(WIN_VERSION)
 
-void jit_gl_new_new_native(t_jit_gl_hap *x)
+#include "jit.gl.hap.h"
+
+void jit_gl_hap_new_native(t_jit_gl_hap *x)
 {
 	InitializeQTML(0);                          // Initialize QTML 
 	EnterMovies();                              // Initialize QuickTime 
@@ -23,7 +25,7 @@ void jit_gl_hap_free_native(t_jit_gl_hap *x)
 	TerminateQTML();                            // Terminate QTML 
 }
 
-void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname)
+void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname, short vol)
 {
 	char fpath[MAX_PATH_CHARS];
 	char cpath[MAX_PATH_CHARS];
@@ -90,6 +92,7 @@ t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
 
 t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 {
+	OSStatus err;
 	// Check if the movie has a Hap video track
 	if (HapQTQuickTimeMovieHasHapTrackPlayable(x->movie)) {
 		CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
@@ -122,8 +125,8 @@ t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 	
 	StartMovie(x->movie);
 	SetMovieRate(x->movie, DoubleToFixed(x->rate));
-	SetMovieVolume(x->movie, x->vol*255.);
-	jit_gl_hap_load_file(x);
+	SetMovieVolume(x->movie, (short)(x->vol*255.));
+	
 	jit_gl_hap_do_looppoints(x);
 	jit_attr_user_touch(x, gensym("loopstart"));
 	jit_attr_user_touch(x, gensym("loopend"));
@@ -217,7 +220,7 @@ t_atom_long jit_gl_hap_do_get_time(t_jit_gl_hap *x)
 t_jit_err jit_gl_hap_rate_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 {
 	if (ac && av)
-		x->rate = jit_atom_getfloat(av);
+		x->rate = (float)jit_atom_getfloat(av);
 	if(x->movieloaded)
 		SetMovieRate(x->movie, DoubleToFixed(x->rate));
 		
@@ -227,9 +230,9 @@ t_jit_err jit_gl_hap_rate_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 t_jit_err jit_gl_hap_vol_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 {
 	if (ac && av)
-		x->vol = CLAMP(jit_atom_getfloat(av), 0, 1);
+		x->vol = (float)(CLAMP(jit_atom_getfloat(av), 0, 1));
 	if(x->movieloaded)
-		SetMovieVolume(x->movie, x->vol*255.);
+		SetMovieVolume(x->movie, (short)(x->vol*255.));
 		
 	return JIT_ERR_NONE;
 }
@@ -245,6 +248,9 @@ void jit_gl_hap_do_loop(t_jit_gl_hap *x)
 		default: flags = 0; break;
 	}
 	x->loopflags = flags;
+
+	if(x->movieloaded)
+		jit_gl_hap_do_looppoints(x);
 }
 
 void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
@@ -277,7 +283,7 @@ void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
 	
 	// check loop duration
 	if (end - start < (ts * 0.001))
-		end = start + MAX(1, ts * 0.001);
+		end = start + (long)(MAX(1, ts * 0.001));
 	
 	if (x->loop != JIT_GL_HAP_LOOP_OFF) {
 		SetTimeBaseFlags(tb,0);	
@@ -303,4 +309,4 @@ void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
 	}
 }
 
-#endif	// WIN_VERSION
+#endif

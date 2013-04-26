@@ -46,13 +46,9 @@
 #include "ext.h"
 #ifndef C74_X64
 
-#include "jit.common.h"
-#include "jit.gl.h"
-#include "jit.fixmath.h"
-
 #include "HapSupport.h"
 #include "jit.gl.hap.glsl.h"
-#include "jit.gl.hap.native.h"
+#include "jit.gl.hap.h"
 
 
 void *_jit_gl_hap_class;
@@ -96,8 +92,6 @@ t_jit_err jit_gl_hap_looppoints(t_jit_gl_hap *x, void *attr, long ac, t_atom *av
 // texture
 void jit_gl_hap_sendoutput(t_jit_gl_hap *x, t_symbol *s, int argc, t_atom *argv);
 t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av);
-
-void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 
 static t_symbol *ps_bind;
 static t_symbol *ps_unbind;
@@ -459,9 +453,10 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 	if(x->validframe) {
 
 		GLint previousFBO;	// make sure we pop out to the right FBO
+#ifdef MAC_VERSION
 		GLint previousReadFBO;
 		GLint previousDrawFBO;
-		
+#endif		
 		// We are going to bind our FBO to our internal jit.gl.texture as COLOR_0 attachment
 		// We need the ID, width/height.
 		GLuint texid = jit_attr_getlong(x->texoutput,ps_glid);
@@ -512,7 +507,7 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		jit_gl_hap_do_report(x);
 	}
 	
-
+	jit_gl_hap_releaseframe(x);
 
 	return result;
 }
@@ -859,7 +854,7 @@ t_jit_err jit_gl_hap_time_get(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av
 t_jit_err jit_gl_hap_loop_set(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
 {
 	if (ac && av)
-		x->loop = CLAMP(jit_atom_getlong(av), 0, 3);
+		x->loop = CLAMP((char)jit_atom_getlong(av), 0, 3);
 
 	if(x->newfile || x->movieloaded)
 		jit_gl_hap_do_loop(x);

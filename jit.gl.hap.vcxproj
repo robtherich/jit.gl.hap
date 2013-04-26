@@ -272,12 +272,14 @@
     <ClCompile Include="$(ProjectName).c" />
     <ClCompile Include="hap\HapSupport.c" />
     <ClCompile Include="jit.gl.hap.glsl.c" />
+    <ClCompile Include="jit.gl.hap.win.c" />
     <ClCompile Include="max.$(ProjectName).c" />
     <ClCompile Include="$(C74SUPPORT)\max-includes\common\commonsyms.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="hap\HapSupport.h" />
     <ClInclude Include="jit.gl.hap.glsl.h" />
+    <ClInclude Include="jit.gl.hap.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

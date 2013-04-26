@@ -9,6 +9,7 @@
       <Filter>hap</Filter>
     </ClCompile>
     <ClCompile Include="jit.gl.hap.glsl.c" />
+    <ClCompile Include="jit.gl.hap.win.c" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="hap">
@@ -20,5 +21,6 @@
       <Filter>hap</Filter>
     </ClInclude>
     <ClInclude Include="jit.gl.hap.glsl.h" />
+    <ClInclude Include="jit.gl.hap.h" />
   </ItemGroup>
 </Project>
