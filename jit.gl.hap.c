@@ -273,6 +273,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->texoutput = jit_object_new(gensym("jit_gl_texture"), dest_name);
 		jit_attr_setsym(x->texoutput,gensym("defaultimage"),gensym("black"));
 		jit_attr_setsym(x->texoutput,_jit_sym_name,jit_symbol_unique());
+		jit_attr_setlong(x->texoutput, gensym("flip"), 0);
 		
 		x->hapglsl = jit_object_new(gensym("jit_gl_shader"), dest_name);
 		
@@ -295,6 +296,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->suppress_loopnotify=0;
 		x->userloop = 0;
 		x->prevtime = 0;
+		x->flipped = 0;
 		
 		x->adapt = 1;
 		x->fps = 0;
@@ -980,25 +982,28 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 			// If we got this far we're good to go
 			x->validframe = 1;
 			x->target = GL_TEXTURE_2D;
-			if(!x->drawhap) {
+			if(!x->flipped) {
 				jit_attr_setlong(x->texoutput, gensym("flip"), 1);
-				x->drawhap = 1;
+				x->flipped = 1;
 			}
+			x->drawhap = 1;
 		}
     }
 	else {
 #ifdef MAC_VERSION
 		CGSize imageSize = CVImageBufferGetEncodedSize(frame);
+		bool flipped = CVOpenGLTextureIsFlipped(frame);
 		x->texture = CVOpenGLTextureGetName(frame);
 		x->useshader = 0;
 		x->dim[0] = (t_atom_long)imageSize.width;
 		x->dim[1] = (t_atom_long)imageSize.height;
 		x->validframe = 1;
 		x->target = GL_TEXTURE_RECTANGLE_ARB;
-		if(x->drawhap) {
-			jit_attr_setlong(x->texoutput, gensym("flip"), 0);
-			x->drawhap = 0;
+		if(x->flipped!=flipped) {
+			jit_attr_setlong(x->texoutput, gensym("flip"), flipped);
+			x->flipped = flipped;			
 		}
+		x->drawhap = 0;
 #endif
 	}
 }

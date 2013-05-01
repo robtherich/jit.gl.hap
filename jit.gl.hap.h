@@ -84,6 +84,7 @@ typedef struct _t_jit_gl_hap
 	char				suppress_loopnotify;
 	char				userloop;
 	t_atom_long			prevtime;
+	char				flipped;
 	
 	char				adapt;
 	float				fps;
