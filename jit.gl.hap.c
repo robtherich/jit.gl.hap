@@ -67,6 +67,7 @@ t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint
 void jit_gl_hap_dodraw(t_jit_gl_hap *x, GLuint width, GLuint height);
 void jit_gl_hap_draw_end(t_jit_gl_hap *x);
 void jit_gl_hap_submit_texture(t_jit_gl_hap *x);
+void jit_gl_hap_submit_nonhap_texture(t_jit_gl_hap *x);
 void jit_gl_hap_do_report(t_jit_gl_hap *x);
 
 // movie control
@@ -278,7 +279,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->hapglsl = jit_object_new(gensym("jit_gl_shader"), dest_name);
 		
 		x->buffer = NULL;
-		x->drawhap = 1;
+		x->hap_format = JIT_GL_HAP_PF_NONE;
 		x->useshader = 0;
 		x->validframe = 0;
 		x->movieloaded = 0;
@@ -288,7 +289,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		x->backingWidth = x->backingHeight = 0;
 		x->roundedWidth = x->roundedHeight = 0;
 		x->internalFormat = x->newInternalFormat = 0;
-		x->newDataLength = 0;
+		x->newDataLength = x->rowLength = 0;
 		x->target = 0;
 		x->fboid = 0;
 		
@@ -476,9 +477,13 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 			jit_attr_user_touch(x, gensym("dim"));
 		}
 		
-		if(x->drawhap) {
+		if(x->hap_format == JIT_GL_HAP_PF_HAP) {
 			jit_gl_hap_submit_texture(x);
 			jit_gl_report_error("jit.gl.hap submit texture");
+		}
+		else if(x->hap_format != JIT_GL_HAP_PF_GL) {
+			jit_gl_hap_submit_nonhap_texture(x);
+			jit_gl_report_error("jit.gl.hap submit non-hap texture");
 		}
 		
 		if(jit_gl_hap_draw_begin(x, texid, width, height)) {
@@ -697,6 +702,55 @@ void jit_gl_hap_submit_texture(t_jit_gl_hap *x)
 
 }
 
+void jit_gl_hap_submit_nonhap_texture(t_jit_gl_hap *x)
+{
+	GLenum type = GL_UNSIGNED_BYTE;
+	GLenum format = (x->hap_format==JIT_GL_HAP_PF_RGB ? GL_RGB : GL_RGBA);
+	GLvoid *baseAddress = CVPixelBufferGetBaseAddress(x->buffer);
+
+	glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
+	glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
+		
+	// Create a new texture if our current one isn't adequate
+	if (
+		!x->texture ||
+		(x->dim[0] > x->backingWidth) ||
+		(x->dim[1] > x->backingHeight) ||
+		(x->newInternalFormat != x->internalFormat)
+	) {
+		
+		glEnable(x->target);
+		
+		if (x->texture != 0) {
+			glDeleteTextures(1, &x->texture);
+		}
+		glGenTextures(1, &x->texture);
+		glBindTexture(x->target, x->texture);
+		x->deletetex = 1;
+		
+		x->backingWidth = x->dim[0];
+		x->backingHeight = x->dim[1];
+		
+		glTexParameteri(x->target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(x->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(x->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(x->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);		
+
+		glTexImage2D(x->target, 0, x->newInternalFormat, x->backingWidth, x->backingHeight, 0, format, type, NULL);
+		x->internalFormat = x->newInternalFormat;
+	}
+	else {
+		glBindTexture(x->target, x->texture);
+	}
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, x->rowLength);
+	glTexSubImage2D(x->target, 0,0,0, x->roundedWidth, x->roundedHeight, format, type, baseAddress);
+
+	glPopClientAttrib();
+	glPopAttrib();
+
+}
 #pragma mark -
 #pragma mark movie controls
 #pragma mark -
@@ -914,7 +968,8 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 {
 	t_jit_gl_hap * x = (t_jit_gl_hap*)jitob;
 	CFTypeID imageType = CFGetTypeID(frame);
-	
+	OSType newPixelFormat;
+
 	if(x->validframe)
 		return;
 		
@@ -934,9 +989,10 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 		x->dim[0] = CVPixelBufferGetWidth(x->buffer);
 		x->dim[1] = CVPixelBufferGetHeight(x->buffer);
 
-		if(x->buffer) {
+		newPixelFormat = CVPixelBufferGetPixelFormatType(x->buffer);
+
+		if(x->buffer && x->hap_format==JIT_GL_HAP_PF_HAP) {
 			size_t extraRight, extraBottom;
-			OSType newPixelFormat;
 			unsigned int bitsPerPixel;
 			size_t bytesPerRow;
 			size_t actualBufferSize;
@@ -947,9 +1003,7 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 			if (x->roundedWidth % 4 != 0 || x->roundedHeight % 4 != 0) {
 				x->validframe = 0;
 				return;
-			}
-			
-			newPixelFormat = CVPixelBufferGetPixelFormatType(x->buffer);			
+			}			
 
 			switch (newPixelFormat) {
 				case kHapPixelFormatTypeRGB_DXT1:
@@ -986,7 +1040,29 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 				jit_attr_setlong(x->texoutput, gensym("flip"), 1);
 				x->flipped = 1;
 			}
-			x->drawhap = 1;
+			//x->drawhap = 1;
+		}
+		else if(x->buffer) {// && x->hap_format==JIT_GL_HAP_PF_HAP) {
+			if( newPixelFormat == k24RGBPixelFormat )
+				x->newInternalFormat = GL_RGB8;
+			else if( newPixelFormat == k32BGRAPixelFormat )
+				x->newInternalFormat = GL_RGBA8;
+			else {
+				x->validframe = 0;
+				return;
+			}
+
+			x->roundedWidth = x->dim[0];
+			x->roundedHeight = x->dim[1];
+			x->newDataLength = CVPixelBufferGetDataSize(x->buffer);
+			x->rowLength = CVPixelBufferGetBytesPerRow( x->buffer ) / (x->hap_format==JIT_GL_HAP_PF_RGB ? 3 : 4);
+			x->target = GL_TEXTURE_RECTANGLE_EXT;
+			
+			if(!x->flipped) {
+				jit_attr_setlong(x->texoutput, gensym("flip"), 1);
+				x->flipped = 1;
+			}
+			x->validframe = 1;
 		}
     }
 	else {

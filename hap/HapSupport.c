@@ -205,4 +205,56 @@ CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary()
     return dictionary;
 }
 
+CFDictionaryRef HapQTCreateNonHapCVPixelBufferOptionsDictionary(t_bool alpha)
+{
+	CFDictionaryRef dictionary;
+	CFNumberRef format, glcompat, alignment;
+	SInt32 value = (alpha ? k32BGRAPixelFormat : k24RGBPixelFormat);
+	format = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &value);
+	value = 1;
+	glcompat = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &value);
+	alignment = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &value);
+    
+	{
+		const void *keys[3] = { kCVPixelBufferPixelFormatTypeKey, kCVPixelBufferOpenGLCompatibilityKey, kCVPixelBufferBytesPerRowAlignmentKey };
+		const void *values[3] = { format, glcompat, alignment };
+    
+		dictionary = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	}
+	CFRelease(format);    
+	CFRelease(glcompat);    
+	CFRelease(alignment);    
+
+    return dictionary;
+}
+
+// from Cinder project QuickTime.cpp
+t_bool HapQTHasAlpha(Movie movie)
+{
+	long trackIdx;
+	OSErr err;
+	for( trackIdx = 1; trackIdx <= GetMovieTrackCount(movie); ++trackIdx ) {
+		Track track = GetMovieIndTrack( movie, trackIdx );
+		Media media = GetTrackMedia( track );
+		OSType dwType;
+		GetMediaHandlerDescription( media, &dwType, 0, 0 );
+		if( ( dwType == VideoMediaType ) || ( dwType == MPEGMediaType ) ) {
+			ImageDescriptionHandle imageDescH = (ImageDescriptionHandle) NewHandleClear(sizeof(ImageDescription));
+			GetMediaSampleDescription( media, 1, (SampleDescriptionHandle)imageDescH );
+			err = GetMoviesError();
+			if( err != noErr ) {
+				DisposeHandle( (Handle)imageDescH );
+				continue;
+			}
+			if( imageDescH ) {
+				bool result = (*imageDescH)->depth == 32;
+				DisposeHandle( (Handle)imageDescH );
+				return result;
+			}
+		}
+	}
+	
+	return false;
+}
+
 #endif //C74_X64

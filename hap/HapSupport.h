@@ -68,6 +68,10 @@ Boolean HapQTQuickTimeMovieHasHapTrackPlayable(Movie movie);
  */
 CFDictionaryRef HapQTCreateCVPixelBufferOptionsDictionary();
 
+CFDictionaryRef HapQTCreateNonHapCVPixelBufferOptionsDictionary(t_bool alpha);
+
+t_bool HapQTHasAlpha(Movie movie);
+
 #endif
 
 #endif	// C74_X64

@@ -48,12 +48,12 @@ void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname, short vol)
 			DisposeMovie(x->movie);
 	}
 	else {
-		if(!HapQTQuickTimeMovieHasHapTrackPlayable(x->movie)) {
-			DisposeMovie(x->movie);
-			jit_object_error((t_object*)x, "non-hap codec movies are unsupported at this time");
-			goto out;
-		}
-		else {
+		//if(!HapQTQuickTimeMovieHasHapTrackPlayable(x->movie)) {
+			//DisposeMovie(x->movie);
+			//jit_object_error((t_object*)x, "non-hap codec movies are unsupported at this time");
+			//goto out;
+		//}
+		//else {
 			//MediaHandler mh = NULL;
 			Track	track = NULL;
 			Media	media = NULL;
@@ -71,9 +71,9 @@ void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname, short vol)
 			x->timescale = GetMovieTimeScale(x->movie);
 			x->duration = GetMovieDuration(x->movie);
 			x->fps = (float)((double)x->framecount*(double)x->timescale/(double)x->duration);
-		}
+		//}
 	}
-out:
+//out:
 	DisposeHandle(dataRef);
 	dataRef = NULL;
 }
@@ -104,8 +104,18 @@ t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 {
 	OSStatus err;
 	// Check if the movie has a Hap video track
-	if (HapQTQuickTimeMovieHasHapTrackPlayable(x->movie)) {
-		CFDictionaryRef pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
+	Boolean hashap = HapQTQuickTimeMovieHasHapTrackPlayable(x->movie);
+	CFDictionaryRef pixelBufferOptions;
+	if(hashap) {
+		pixelBufferOptions = HapQTCreateCVPixelBufferOptionsDictionary();
+		x->hap_format = JIT_GL_HAP_PF_HAP;
+	}
+	else {
+		t_bool hasalpha = HapQTHasAlpha(x->movie);
+		pixelBufferOptions = HapQTCreateNonHapCVPixelBufferOptionsDictionary(hasalpha);
+		x->hap_format = hasalpha ? JIT_GL_HAP_PF_RGBA : JIT_GL_HAP_PF_RGB;
+	}
+	{
 		const void* key = kQTVisualContextPixelBufferAttributesKey;
 		const void* value = pixelBufferOptions;
 		CFDictionaryRef visualContextOptions = CFDictionaryCreate(
@@ -116,11 +126,11 @@ t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 		err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &x->visualContext);
 		CFRelease(visualContextOptions);
 	}
-	else {
+	//else {
 		//err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
-		jit_object_error((t_object*)x, "non-hap codec movies are unsupported at this time");
-		return JIT_ERR_GENERIC;
-	}
+		//jit_object_error((t_object*)x, "non-hap codec movies are unsupported at this time");
+		//return JIT_ERR_GENERIC;
+	//}
 
 	if (err == noErr) {
 		err = SetMovieVisualContext(x->movie, x->visualContext);
@@ -146,6 +156,7 @@ t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 		StopMovie(x->movie);
 		jit_gl_hap_do_set_time(x, 0);
 	}
+	return JIT_ERR_NONE;
 }
 
 t_bool jit_gl_hap_getcurrentframe(t_jit_gl_hap *x)

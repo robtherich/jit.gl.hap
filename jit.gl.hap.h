@@ -55,6 +55,12 @@ QTPixelBufferContextCreate(
 #define JIT_GL_HAP_LOOP_PALINDROME	2
 #define JIT_GL_HAP_LOOP_LIMITS		3
 
+#define JIT_GL_HAP_PF_NONE			0
+#define JIT_GL_HAP_PF_HAP			1
+#define JIT_GL_HAP_PF_GL			2
+#define JIT_GL_HAP_PF_RGB			3
+#define JIT_GL_HAP_PF_RGBA			4
+
 typedef struct _t_jit_gl_hap
 {
 	t_object				ob;
@@ -74,7 +80,7 @@ typedef struct _t_jit_gl_hap
 	CVImageBufferRef		currentImage;
 #endif
 
-	char				drawhap;
+	t_uint8				hap_format;
 	char				useshader;
 	char				newfile;
 	char				deletetex;
@@ -110,6 +116,7 @@ typedef struct _t_jit_gl_hap
 	GLenum				internalFormat;
 	GLenum				newInternalFormat;
 	GLsizei				newDataLength;
+	GLsizei				rowLength;
 	GLenum				target;
 	GLuint				fboid;
 } t_jit_gl_hap;
