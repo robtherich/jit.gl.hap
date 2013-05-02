@@ -1079,7 +1079,6 @@ void jit_gl_hap_draw_frame(void *jitob, CVImageBufferRef frame)
 			jit_attr_setlong(x->texoutput, gensym("flip"), flipped);
 			x->flipped = flipped;			
 		}
-		x->drawhap = 0;
 #endif
 	}
 }

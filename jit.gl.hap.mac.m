@@ -62,7 +62,8 @@ t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
 
 t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 {
-	if(![x->hap addMovieToContext]) {
+	x->hap_format = [x->hap addMovieToContext];
+	if(x->hap_format==JIT_GL_HAP_PF_NONE) {
 		jit_object_error((t_object*)x, "unknown error adding quicktime movie to context");
 		return JIT_ERR_GENERIC;
 	}

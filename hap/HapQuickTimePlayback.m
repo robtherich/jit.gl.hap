@@ -32,6 +32,7 @@
  */
 
 #import "HapSupport.h"
+#import "jit.gl.hap.h"
 
 #ifndef C74_X64
 
@@ -132,10 +133,11 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
     }
 }
 
-- (BOOL)addMovieToContext
+- (t_uint8)addMovieToContext
 {
 	// It's important not to play the movie until it has been attached to a context, otherwise it will start decompression with a non-optimal pixel format
 	OSStatus err = noErr;
+	t_uint8 ret = JIT_GL_HAP_PF_NONE;
 	
 	// Check if the movie has a Hap video track
 	if (HapQTMovieHasHapTrackPlayable(movie)) {
@@ -159,18 +161,20 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
 		
 		CFRelease(pixelBufferOptions);
 		err = QTPixelBufferContextCreate(kCFAllocatorDefault, (CFDictionaryRef)visualContextOptions, &visualContext);
+		ret = JIT_GL_HAP_PF_HAP;
 	}
 	else {
 		err = QTOpenGLTextureContextCreate(kCFAllocatorDefault, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nil, &visualContext);
+		ret = JIT_GL_HAP_PF_GL;
 	}
 	
 	if (err == noErr) {
 		err = SetMovieVisualContext([movie quickTimeMovie],visualContext);
 		if (err == noErr) {
-			return YES;
+			return ret;
 		}
 	}
-	return NO;
+	return JIT_GL_HAP_PF_NONE;
 }
 
 - (void)getCurFrame
