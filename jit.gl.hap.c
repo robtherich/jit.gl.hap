@@ -498,7 +498,7 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 		}
 
 		glPopClientAttrib();
-		glPopAttrib();
+		//glPopAttrib();
 		
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
 #ifdef MAC_VERSION
@@ -521,7 +521,11 @@ t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint
 {
 	GLenum status;
 	// save texture state, client state, etc.
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+	// this causes some problems on windows-nvidia cards
+	// disabling for now, doesn't seem to be necessary
+	// http://www.opengl.org/discussion_boards/showthread.php/165636-Invalid-Operation-glDrawBuffer-glPopAttrib
+	//glPushAttrib(GL_ALL_ATTRIB_BITS);
 	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
 
 	// FBO generation/attachment to texture
