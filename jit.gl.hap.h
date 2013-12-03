@@ -139,4 +139,6 @@ t_atom_long jit_gl_hap_do_get_time(t_jit_gl_hap *x);
 void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 void jit_gl_hap_releaseframe(t_jit_gl_hap *x);
 
+long jit_gl_hap_do_loadram(t_jit_gl_hap *x, t_atom_long from, t_atom_long to, short unload);
+
 #endif

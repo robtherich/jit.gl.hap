@@ -76,6 +76,7 @@ void jit_gl_hap_stop(t_jit_gl_hap *x);
 void jit_gl_hap_clear_looppoints(t_jit_gl_hap *x);
 t_jit_err jit_gl_hap_frame(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
 t_jit_err jit_gl_hap_jump(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
+t_jit_err jit_gl_hap_loadram(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av);
 
 // attributes
 
@@ -141,6 +142,8 @@ t_jit_err jit_gl_hap_init(void)
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_jump,		"jump",		A_DEFER_LOW, 0L);
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_frame,	"frame",	A_DEFER_LOW, 0L);
 	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_clear_looppoints,	"clear_looppoints", A_DEFER_LOW, 0L);
+	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_loadram,	"loadram",	A_DEFER_LOW, 0L);
+	jit_class_addmethod(_jit_gl_hap_class, (method)jit_gl_hap_loadram,	"unloadram",A_DEFER_LOW, 0L);
 	
 	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_USURP_LOW;
 	
@@ -838,6 +841,43 @@ void jit_gl_hap_do_report(t_jit_gl_hap *x)
 	}
 }
 
+t_jit_err jit_gl_hap_loadram(t_jit_gl_hap *x, t_symbol *s, long ac, t_atom *av)
+{
+	t_atom_long al;
+	t_atom_long from = 0, to = 0;
+	short unload = (s == gensym("unloadram"));
+	t_atom a;
+	jit_atom_setlong(&a, 0);
+	
+	// 1 args end
+	// 2 args = start, end
+	if (x->movieloaded) {
+		switch(ac) {
+		case 1:
+			if (!jit_atom_arg_getlong(&al, 0, ac, av)) {
+				to = (t_atom_long) al;
+			}
+		case 2:
+			if (!jit_atom_arg_getlong(&al, 0, ac, av)) {
+				from = (t_atom_long) al; 
+			}
+			if (!jit_atom_arg_getlong(&al, 1, ac, av)) {
+				to = (t_atom_long) al; 
+			}
+			break;
+		default:
+			break;
+		}
+		
+		if(!jit_gl_hap_do_loadram(x, from, to, unload)) {
+			jit_atom_setlong(&a, 1);
+		}
+	}
+	
+	jit_gl_hap_notify_atomarray_prep(x,s,1,&a);
+	
+	return JIT_ERR_NONE;
+}
 
 #pragma mark -
 #pragma mark texture
