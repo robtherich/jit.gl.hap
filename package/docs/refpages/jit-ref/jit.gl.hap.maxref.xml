@@ -96,6 +96,18 @@
 			</digest>
 			<description />
 		</method>
+		<method name="loadram">
+			<arglist>
+				<arg name="from" optional="1" type="long" />
+				<arg name="to" optional="1" type="long" />				
+			</arglist>
+			<digest>
+				Load movie into RAM
+			</digest>
+			<description>
+				Load the current movie file into system RAM. If no argument is present the entire movie is loaded. If one arg, it sets the end time in qt units, if two args they set the start and end times.
+			</description>
+		</method>
 		<method name="read">
 			<arglist>
 				<arg name="src-name" optional="1" type="symbol" />
@@ -140,6 +152,18 @@
 				Stops movie playback. <at>rate</at> is unaffected).
 			</description>
 		</method>
+		<method name="unloadram">
+			<arglist>
+				<arg name="from" optional="1" type="long" />
+				<arg name="to" optional="1" type="long" />				
+			</arglist>
+			<digest>
+				Unload movie from RAM
+			</digest>
+			<description>
+				Unload the current movie file from system RAM. If no argument is present the entire movie is unloaded. If one arg, it sets the end time in qt units, if two args they set the start and end times.
+			</description>
+		</method>		
 	</methodlist>
 	<jittermethodlist>
 		<jittermethod name="bang" />

@@ -5,7 +5,7 @@
 	"description": "Provides native Hap codec support.",
 	"version": "1",
 	"major_version": "1",
-	"minor_version": "0",
+	"minor_version": "1",
 	"min_max_version": "608",
 	"min_osx_version": "60",
 	"min_win_version": "None",
