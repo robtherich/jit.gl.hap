@@ -798,7 +798,7 @@ void jit_gl_hap_looper_notify(t_jit_gl_hap *x)
 void jit_gl_hap_do_report(t_jit_gl_hap *x)
 {
 	if(x->movieloaded) {
-		t_atom_long curtime = 0;//[[x->hap movie] currentTime].timeValue;
+		t_atom_long curtime = jit_gl_hap_do_get_time(x);
 		
 		if(x->framereport) {
 			t_atom a;
