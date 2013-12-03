@@ -9,6 +9,8 @@ C74_EXTERNAL_NOT_ON_X64("jit.gl.hap")
 #include "jit.common.h"
 #include "jit.gl.h"
 
+static const char versionstring[] = "1.0.1";
+
 typedef struct _max_jit_gl_hap 
 {
 	t_object		ob;
@@ -17,6 +19,8 @@ typedef struct _max_jit_gl_hap
 } t_max_jit_gl_hap;
 
 t_jit_err jit_gl_hap_init(void); 
+
+void max_jit_gl_hap_version(t_max_jit_gl_hap *x);
 
 void max_jit_gl_hap_assist(t_max_jit_gl_hap *x, void *b, long io, long index, char *s);
 void max_jit_gl_hap_notify(t_max_jit_gl_hap *x, t_symbol *s, t_symbol *msg, void *ob, void *data);
@@ -52,6 +56,7 @@ int C74_EXPORT main(void)
 	// override default ob3d bang/draw methods
 	max_jit_class_addmethod_defer_low(maxclass, (method)max_jit_gl_hap_bang, "bang");
 	max_jit_class_addmethod_defer_low(maxclass, (method)max_jit_gl_hap_draw, "draw");
+	max_jit_class_addmethod_defer_low(maxclass, (method)max_jit_gl_hap_version, "version");
 				
     class_addmethod(maxclass, (method)max_jit_gl_hap_assist, "assist", A_CANT, 0);
 
@@ -114,6 +119,11 @@ void max_jit_gl_hap_notify(t_max_jit_gl_hap *x, t_symbol *s, t_symbol *msg, void
 			freebytes(av, sizeof(t_atom) * ac);
 		}
 	}	
+}
+
+void max_jit_gl_hap_version(t_max_jit_gl_hap *x)
+{
+	post("jit.gl.hap: version %s", versionstring);
 }
 
 void max_jit_gl_hap_bang(t_max_jit_gl_hap *x)
