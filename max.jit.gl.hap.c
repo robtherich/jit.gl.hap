@@ -9,7 +9,7 @@ C74_EXTERNAL_NOT_ON_X64("jit.gl.hap")
 #include "jit.common.h"
 #include "jit.gl.h"
 
-static const char versionstring[] = "1.0.1";
+static const char versionstring[] = "1.0.2";
 
 typedef struct _max_jit_gl_hap 
 {
