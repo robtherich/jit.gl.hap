@@ -422,6 +422,8 @@ t_jit_err jit_gl_hap_dest_changed(t_jit_gl_hap *x)
 		x->fboid = 0;
 	}
 	
+	jit_object_method(x->texoutput, gensym("set_rebuild"));
+
 	// our texture has to be bound in the new context before we can use it
 	// http://cycling74.com/forums/topic.php?id=29197
 	jit_gl_drawinfo_setup(x, &drawinfo);
