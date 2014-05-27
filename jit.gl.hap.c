@@ -93,6 +93,7 @@ t_jit_err jit_gl_hap_looppoints(t_jit_gl_hap *x, void *attr, long ac, t_atom *av
 // texture
 void jit_gl_hap_sendoutput(t_jit_gl_hap *x, t_symbol *s, int argc, t_atom *argv);
 t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_atom **av);
+t_jit_err jit_gl_hap_setattr_out_name(t_jit_gl_hap *x, void *attr, long ac, t_atom *av);
 
 static t_symbol *ps_bind;
 static t_symbol *ps_unbind;
@@ -210,11 +211,11 @@ t_jit_err jit_gl_hap_init(void)
 	jit_class_addattr(_jit_gl_hap_class,attr);
 	object_addattr_parse(attr,"style",_jit_sym_symbol,0,"onoff");
 	
-	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_OPAQUE_USER;
 	attr = jit_object_new(_jit_sym_jit_attr_offset,"out_name",_jit_sym_symbol, attrflags,
-		(method)jit_gl_hap_getattr_out_name,(method)0L,0);	
+		(method)jit_gl_hap_getattr_out_name,(method)jit_gl_hap_setattr_out_name,0);
 	jit_class_addattr(_jit_gl_hap_class,attr);	
 
+	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_OPAQUE_USER;
 	attr = jit_object_new(_jit_sym_jit_attr_offset,"fps",_jit_sym_float32,attrflags,
 		(method)0L,(method)0L,calcoffset(t_jit_gl_hap,fps));
 	jit_class_addattr(_jit_gl_hap_class,attr);
@@ -923,6 +924,15 @@ t_jit_err jit_gl_hap_getattr_out_name(t_jit_gl_hap *x, void *attr, long *ac, t_a
 	
 	return JIT_ERR_NONE;
 }
+
+t_jit_err jit_gl_hap_setattr_out_name(t_jit_gl_hap *x, void *attr, long ac, t_atom *av)
+{
+	if (ac && av) {
+		jit_attr_setsym(x->texoutput, _jit_sym_name, jit_atom_getsym(av));
+	}
+	return JIT_ERR_NONE;
+}
+
 	
 #pragma mark -
 #pragma mark attributes
