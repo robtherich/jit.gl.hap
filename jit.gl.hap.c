@@ -526,21 +526,18 @@ t_jit_err jit_gl_hap_draw(t_jit_gl_hap *x)
 t_bool jit_gl_hap_draw_begin(t_jit_gl_hap *x, GLuint texid, GLuint width, GLuint height)
 {
 	GLenum status;
-	// save texture state, client state, etc.
 
-	// this causes some problems on windows-nvidia cards
-	// disabling for now, doesn't seem to be necessary
-	// http://www.opengl.org/discussion_boards/showthread.php/165636-Invalid-Operation-glDrawBuffer-glPopAttrib
-	glPushAttrib(GL_VIEWPORT_BIT|GL_COLOR_BUFFER_BIT);
-	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-
-	// FBO generation/attachment to texture
 	if(x->fboid == 0)
 		glGenFramebuffersEXT(1, &x->fboid);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, x->fboid);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, texid, 0);
-	
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+
+	// moving this to after bindframebuffer seems to fix problems on windows
+	// http://www.opengl.org/discussion_boards/showthread.php/165636-Invalid-Operation-glDrawBuffer-glPopAttrib
+	glPushAttrib(GL_VIEWPORT_BIT|GL_COLOR_BUFFER_BIT);
+	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+
 	if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		glClearColor(0.0, 0.0, 0.0, 0.0);
 		glClear(GL_COLOR_BUFFER_BIT);

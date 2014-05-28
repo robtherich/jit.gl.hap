@@ -330,4 +330,24 @@ void jit_gl_hap_do_looppoints(t_jit_gl_hap *x)
 	}
 }
 
+long jit_gl_hap_do_loadram(t_jit_gl_hap *x, t_atom_long from, t_atom_long to, short unload)
+{
+    t_atom_long duration = x->duration;
+    
+    if(to)
+        CLIP_ASSIGN(to, 0, duration);
+    else
+        to = duration;
+        
+    CLIP_ASSIGN(from, 0, duration);
+        
+    if (from > to) {
+        t_atom_long temp = to;
+        to = from;
+        from = temp;
+    }
+    
+    return LoadMovieIntoRam(x->movie, from, to - from, (unload ? unkeepInRam : keepInRam));
+}
+
 #endif
