@@ -273,7 +273,7 @@ t_jit_gl_hap *jit_gl_hap_new(t_symbol * dest_name)
 		jit_ob3d_new(x, dest_name);
 
 		jit_gl_hap_new_native(x);
-
+		x->has_video = 0;
 		x->file = _jit_sym_nothing;
 		x->texoutput = jit_object_new(gensym("jit_gl_texture"), dest_name);
 		jit_attr_setsym(x->texoutput,gensym("defaultimage"),gensym("black"));

@@ -64,6 +64,7 @@ void jit_gl_hap_draw_frame(void *x, CVImageBufferRef frame);
 - (double)frameRate;
 - (long long)frameCount;
 
+- (BOOL)hasVideoTrack;
 @property (readonly) QTMovie *movie;
 @property (readonly) NSError *lasterror;
 

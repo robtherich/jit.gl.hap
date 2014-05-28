@@ -60,6 +60,7 @@ QTPixelBufferContextCreate(
 #define JIT_GL_HAP_PF_GL			2
 #define JIT_GL_HAP_PF_RGB			3
 #define JIT_GL_HAP_PF_RGBA			4
+#define JIT_GL_HAP_PF_NO_VIDEO		5
 
 typedef struct _t_jit_gl_hap
 {
@@ -81,6 +82,7 @@ typedef struct _t_jit_gl_hap
 #endif
 
 	t_uint8				hap_format;
+	char				has_video;
 	char				useshader;
 	char				newfile;
 	char				deletetex;

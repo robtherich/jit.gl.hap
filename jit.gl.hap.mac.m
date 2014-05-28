@@ -36,11 +36,18 @@ void jit_gl_hap_read_native(t_jit_gl_hap *x, char *fname, short vol)
 	}
 	else {
 		QTTime duration = [[x->hap movie] duration];
-		x->newfile = 1;
-		x->fps = [x->hap frameRate];
-		x->framecount = [x->hap frameCount];
+		x->has_video = [x->hap hasVideoTrack];
+		x->newfile = 1;		
 		x->timescale = duration.timeScale;
 		x->duration = duration.timeValue;
+		if(x->has_video) {
+			x->fps = [x->hap frameRate];
+			x->framecount = [x->hap frameCount];
+		}
+		else {
+			x->fps = 0;
+			x->framecount = 0;
+		}
 	}
 }
 
@@ -62,10 +69,15 @@ t_jit_err jit_gl_hap_dest_closing(t_jit_gl_hap *x)
 
 t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 {
-	x->hap_format = [x->hap addMovieToContext];
-	if(x->hap_format==JIT_GL_HAP_PF_NONE) {
-		jit_object_error((t_object*)x, "unknown error adding quicktime movie to context");
-		return JIT_ERR_GENERIC;
+	if(x->has_video) {
+		x->hap_format = [x->hap addMovieToContext];
+		if(x->hap_format==JIT_GL_HAP_PF_NONE) {
+			jit_object_error((t_object*)x, "unknown error adding quicktime movie to context");
+			return JIT_ERR_GENERIC;
+		}
+	}
+	else {
+		x->hap_format = JIT_GL_HAP_PF_NO_VIDEO;
 	}
 	
 	x->movieloaded = 1;
@@ -99,13 +111,15 @@ t_jit_err jit_gl_hap_load_file(t_jit_gl_hap *x)
 
 t_bool jit_gl_hap_getcurrentframe(t_jit_gl_hap *x)
 {
-	[x->hap getCurFrame];
+	if(x->has_video)
+		[x->hap getCurFrame];
 	return 1;
 }
 
 void jit_gl_hap_releaseframe(t_jit_gl_hap *x)
 {
-	[x->hap releaseCurFrame];
+	if(x->has_video)
+		[x->hap releaseCurFrame];
 }
 
 void jit_gl_hap_start(t_jit_gl_hap *x)

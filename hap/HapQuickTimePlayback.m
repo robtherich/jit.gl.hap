@@ -216,7 +216,8 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
     if (movie) {
         [movie stop];
         SetMovieVisualContext([movie quickTimeMovie], NULL);
-		QTVisualContextRelease(visualContext);
+		if(visualContext)
+			QTVisualContextRelease(visualContext);
 		visualContext = NULL;
     }
 }
@@ -243,6 +244,16 @@ static void VisualContextFrameCallback(QTVisualContextRef visualContext, const C
   }
   return 0;
 }
+
+- (BOOL)hasVideoTrack
+{
+	if(movie) {
+		if([[movie tracksOfMediaType:QTMediaTypeVideo] count] > 0)
+			return YES;
+	}
+	return NO;
+}
+
 @end
 
 #endif
