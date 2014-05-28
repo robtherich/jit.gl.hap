@@ -16,7 +16,7 @@ To export and playback HAP encoded movies, the [Hap QuickTime codec](https://git
 Limitations
 ===========
 
-Currently only supported on 32 bit Macs, OS 10.6 and later.
+Currently only supported on 32 bit Mac, OS 10.6 and later, and 32 bit Windows.
 Requires [Max 6.1](http://cycling74.com/products/max/) and later 
 
 Modifying the dim attribute (native movie dimensions) is currently not supported.
