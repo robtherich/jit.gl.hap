@@ -824,13 +824,25 @@ void jit_gl_hap_do_report(t_jit_gl_hap *x)
 				}
 			}
 			else if(x->loop == JIT_GL_HAP_LOOP_ON){
-				if(curtime<x->prevtime && x->rate>0) {
-					jit_gl_hap_looper_notify(x);
+				if (x->rate>0) {
+					if(curtime<x->prevtime) {
+						jit_gl_hap_looper_notify(x);
+					}
+				} else {
+					if(curtime>x->prevtime) {
+						jit_gl_hap_looper_notify(x);
+					}
 				}
 			}
 			else if(x->loop == JIT_GL_HAP_LOOP_OFF) {
-				if ((curtime == x->duration) && (curtime>x->prevtime)) {
-					jit_gl_hap_looper_notify(x);
+				if (x->rate>0) {
+					if ((curtime == x->duration) && (curtime>x->prevtime)) {
+						jit_gl_hap_looper_notify(x);
+					}
+				} else {
+					if ((curtime == 0) && (curtime<x->prevtime)) {
+						jit_gl_hap_looper_notify(x);
+					}
 				}
 			}
 			else if(x->loop == JIT_GL_HAP_LOOP_LIMITS) {
