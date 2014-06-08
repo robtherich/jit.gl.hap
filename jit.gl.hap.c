@@ -833,6 +833,17 @@ void jit_gl_hap_do_report(t_jit_gl_hap *x)
 					jit_gl_hap_looper_notify(x);
 				}
 			}
+			else if(x->loop == JIT_GL_HAP_LOOP_LIMITS) {
+				if (x->rate>0) {
+					if ((curtime >= x->looppoints[1]) && (curtime>x->prevtime)) {
+						jit_gl_hap_looper_notify(x);
+					}
+				} else {
+					if ((curtime <= x->looppoints[0]) && (curtime<x->prevtime)) {
+						jit_gl_hap_looper_notify(x);
+					}
+				}
+			}
 		}
 		
 		if(x->loop == JIT_GL_HAP_LOOP_PALINDROME)
